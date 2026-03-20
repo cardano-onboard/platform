@@ -1,0 +1,108 @@
+# Onboard.Ninja — Production / DIY self-hosted stack
+# Usage:
+#   cp .env.docker .env          # fill in your secrets
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   open http://localhost:8080
+
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Application (PHP-FPM + nginx in one container via supervisord)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: onboard_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.docker
+    environment:
+      # Overrides from compose so the app can reach sibling containers by
+      # their service names regardless of what is in .env.docker
+      DB_HOST: mysql
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      # Persist uploaded files and generated content across restarts
+      - app_storage:/var/www/html/storage/app
+      - app_logs:/var/www/html/storage/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - onboard
+
+  # ---------------------------------------------------------------------------
+  # MySQL 8
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: onboard_mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"       # expose if you want a local client (e.g. TablePlus)
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootsecret}"
+      MYSQL_DATABASE: "${DB_DATABASE:-onboard}"
+      MYSQL_USER: "${DB_USERNAME:-onboard}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-secret}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1",
+             "-u", "root", "--password=${DB_ROOT_PASSWORD:-rootsecret}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - onboard
+
+  # ---------------------------------------------------------------------------
+  # Redis (cache + queue driver)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: onboard_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"       # expose if you want redis-cli access from the host
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - onboard
+
+# =============================================================================
+# Named volumes
+# =============================================================================
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_storage:
+    driver: local
+  app_logs:
+    driver: local
+
+# =============================================================================
+# Network
+# =============================================================================
+networks:
+  onboard:
+    driver: bridge
