@@ -1,0 +1,4 @@
+NAME            CPU %     MEM USAGE / LIMIT   MEM %
+onboard_app     0.12%     155MiB / 1GiB       15.13%
+onboard_mysql   0.36%     378.1MiB / 1GiB     36.93%
+onboard_redis   0.27%     4.16MiB / 256MiB    1.63%

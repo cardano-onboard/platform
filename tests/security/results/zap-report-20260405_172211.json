@@ -1,0 +1,851 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "Mon, 6 Apr 2026 00:31:00",
+	"created": "2026-04-06T00:31:00.318875671Z",
+	"insights":[
+		{
+			"level": "Low",
+			"reason": "Warning",
+			"site": "",
+			"key": "insight.log.warn",
+			"description": "ZAP warnings logged - see the zap.log file for details",
+			"statistic": "2"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.code.2xx",
+			"description": "Percentage of responses with status code 2xx",
+			"statistic": "88"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.code.4xx",
+			"description": "Percentage of responses with status code 4xx",
+			"statistic": "11"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.ctype.application/javascript",
+			"description": "Percentage of endpoints with content type application/javascript",
+			"statistic": "42"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.ctype.image/png",
+			"description": "Percentage of endpoints with content type image/png",
+			"statistic": "14"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.ctype.text/css",
+			"description": "Percentage of endpoints with content type text/css",
+			"statistic": "14"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.ctype.text/html",
+			"description": "Percentage of endpoints with content type text/html",
+			"statistic": "14"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.ctype.text/plain",
+			"description": "Percentage of endpoints with content type text/plain",
+			"statistic": "14"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "100"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://localhost:8081",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "7"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://localhost:8081",
+			"@host": "localhost",
+			"@port": "8081",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "10038",
+					"alertRef": "10038-1",
+					"alert": "Content Security Policy (CSP) Header Not Set",
+					"name": "Content Security Policy (CSP) Header Not Set",
+					"riskcode": "2",
+					"confidence": "3",
+					"riskdesc": "Medium (High)",
+					"desc": "<p>Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft to site defacement or distribution of malware. CSP provides a set of standard HTTP headers that allow website owners to declare approved sources of content that browsers should be allowed to load on that page \u2014 covered types are JavaScript, CSS, HTML frames, fonts, images and embeddable objects such as Java applets, ActiveX, audio and video files.</p>",
+					"instances":[ 
+						{
+							"id": "13",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "0",
+							"uri": "http://localhost:8081/sitemap.xml",
+							"nodeName": "http:\/\/localhost:8081\/sitemap.xml",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "2",
+					"systemic": true,
+					"solution": "<p>Ensure that your web server, application server, load balancer, etc. is configured to set the Content-Security-Policy header.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP</p><p>https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html</p><p>https://www.w3.org/TR/CSP/</p><p>https://w3c.github.io/webappsec-csp/</p><p>https://web.dev/articles/csp</p><p>https://caniuse.com/#feat=contentsecuritypolicy</p><p>https://content-security-policy.com/</p>",
+					"cweid": "693",
+					"wascid": "15",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "10020",
+					"alertRef": "10020-2",
+					"alert": "Multiple X-Frame-Options Header Entries",
+					"name": "Multiple X-Frame-Options Header Entries",
+					"riskcode": "2",
+					"confidence": "2",
+					"riskdesc": "Medium (Medium)",
+					"desc": "<p>X-Frame-Options (XFO) headers were found, a response with multiple XFO header entries may not be predictably treated by all user-agents.</p>",
+					"instances":[ 
+						{
+							"id": "10",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "x-frame-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "1",
+					"systemic": true,
+					"solution": "<p>Ensure only a single X-Frame-Options header is present in the response.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc7034</p>",
+					"cweid": "1021",
+					"wascid": "15",
+					"sourceid": "1"
+				},
+				{
+					"pluginid": "90003",
+					"alertRef": "90003",
+					"alert": "Sub Resource Integrity Attribute Missing",
+					"name": "Sub Resource Integrity Attribute Missing",
+					"riskcode": "2",
+					"confidence": "3",
+					"riskdesc": "Medium (High)",
+					"desc": "<p>The integrity attribute is missing on a script or link tag served by an external server. The integrity tag prevents an attacker who have gained access to this server from injecting a malicious content.</p>",
+					"instances":[ 
+						{
+							"id": "25",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "<link href=\"https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap\" rel=\"stylesheet\" />",
+							"otherinfo": ""
+						},
+						{
+							"id": "24",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "<link href=\"https://fonts.bunny.net/css?family=varela:400&display=swap\" rel=\"stylesheet\" />",
+							"otherinfo": ""
+						}
+					],
+					"count": "2",
+					"systemic": true,
+					"solution": "<p>Provide a valid integrity attribute to the tag.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity</p>",
+					"cweid": "345",
+					"wascid": "15",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "10010",
+					"alertRef": "10010",
+					"alert": "Cookie No HttpOnly Flag",
+					"name": "Cookie No HttpOnly Flag",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>A cookie has been set without the HttpOnly flag, which means that the cookie can be accessed by JavaScript. If a malicious script can be run on this page then the cookie will be accessible and can be transmitted to another site. If this is a session cookie then session hijacking may be possible.</p>",
+					"instances":[ 
+						{
+							"id": "16",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "XSRF-TOKEN",
+							"attack": "",
+							"evidence": "Set-Cookie: XSRF-TOKEN",
+							"otherinfo": ""
+						}
+					],
+					"count": "1",
+					"systemic": true,
+					"solution": "<p>Ensure that the HttpOnly flag is set for all cookies.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://owasp.org/www-community/HttpOnly</p>",
+					"cweid": "1004",
+					"wascid": "13",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "90004",
+					"alertRef": "90004-2",
+					"alert": "Cross-Origin-Embedder-Policy Header Missing or Invalid",
+					"name": "Cross-Origin-Embedder-Policy Header Missing or Invalid",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>Cross-Origin-Embedder-Policy header is a response header that prevents a document from loading any cross-origin resources that don't explicitly grant the document permission (using CORP or CORS).</p>",
+					"instances":[ 
+						{
+							"id": "47",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "Cross-Origin-Embedder-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "1",
+					"systemic": true,
+					"solution": "<p>Ensure that the application/web server sets the Cross-Origin-Embedder-Policy header appropriately, and that it sets the Cross-Origin-Embedder-Policy header to 'require-corp' for documents.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Embedder-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-embedder-policy).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</p>",
+					"cweid": "693",
+					"wascid": "14",
+					"sourceid": "1"
+				},
+				{
+					"pluginid": "90004",
+					"alertRef": "90004-3",
+					"alert": "Cross-Origin-Opener-Policy Header Missing or Invalid",
+					"name": "Cross-Origin-Opener-Policy Header Missing or Invalid",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>Cross-Origin-Opener-Policy header is a response header that allows a site to control if others included documents share the same browsing context. Sharing the same browsing context with untrusted documents might lead to data leak.</p>",
+					"instances":[ 
+						{
+							"id": "50",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "Cross-Origin-Opener-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "1",
+					"systemic": true,
+					"solution": "<p>Ensure that the application/web server sets the Cross-Origin-Opener-Policy header appropriately, and that it sets the Cross-Origin-Opener-Policy header to 'same-origin' for documents.</p><p>'same-origin-allow-popups' is considered as less secured and should be avoided.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Opener-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-opener-policy).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy</p>",
+					"cweid": "693",
+					"wascid": "14",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "90004",
+					"alertRef": "90004-1",
+					"alert": "Cross-Origin-Resource-Policy Header Missing or Invalid",
+					"name": "Cross-Origin-Resource-Policy Header Missing or Invalid",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.</p>",
+					"instances":[ 
+						{
+							"id": "36",
+							"uri": "http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/LogoSvg-Ci2gI_2b.js",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "31",
+							"uri": "http://localhost:8081/build/assets/Welcome-C2vTbz31.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/Welcome-C2vTbz31.js",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "38",
+							"uri": "http://localhost:8081/build/assets/app-Bb_eEper.css",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-Bb_eEper.css",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "28",
+							"uri": "http://localhost:8081/favicon.png",
+							"nodeName": "http:\/\/localhost:8081\/favicon.png",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "7",
+							"uri": "http://localhost:8081/robots.txt",
+							"nodeName": "http:\/\/localhost:8081\/robots.txt",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Ensure that the application/web server sets the Cross-Origin-Resource-Policy header appropriately, and that it sets the Cross-Origin-Resource-Policy header to 'same-origin' for all web pages.</p><p>'same-site' is considered as less secured and should be avoided.</p><p>If resources must be shared, set the header to 'cross-origin'.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Resource-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-resource-policy).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</p>",
+					"cweid": "693",
+					"wascid": "14",
+					"sourceid": "16"
+				},
+				{
+					"pluginid": "10063",
+					"alertRef": "10063-1",
+					"alert": "Permissions Policy Header Not Set",
+					"name": "Permissions Policy Header Not Set",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>Permissions Policy Header is an added layer of security that helps to restrict from unauthorized access or usage of browser/client features by web resources. This policy ensures the user privacy by limiting or specifying the features of the browsers can be used by the web resources. Permissions Policy provides a set of standard HTTP headers that allow website owners to limit which features of browsers can be used by the page such as camera, microphone, location, full screen etc.</p>",
+					"instances":[ 
+						{
+							"id": "43",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "35",
+							"uri": "http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/LogoSvg-Ci2gI_2b.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "30",
+							"uri": "http://localhost:8081/build/assets/Welcome-C2vTbz31.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/Welcome-C2vTbz31.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "326",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "33",
+							"uri": "http://localhost:8081/sitemap.xml",
+							"nodeName": "http:\/\/localhost:8081\/sitemap.xml",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Ensure that your web server, application server, load balancer, etc. is configured to set the Permissions-Policy header.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy</p><p>https://developer.chrome.com/blog/feature-policy/</p><p>https://scotthelme.co.uk/a-new-security-header-feature-policy/</p><p>https://w3c.github.io/webappsec-feature-policy/</p><p>https://www.smashingmagazine.com/2018/12/feature-policy/</p>",
+					"cweid": "693",
+					"wascid": "15",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "10036",
+					"alertRef": "10036-2",
+					"alert": "Server Leaks Version Information via \"Server\" HTTP Response Header Field",
+					"name": "Server Leaks Version Information via \"Server\" HTTP Response Header Field",
+					"riskcode": "1",
+					"confidence": "3",
+					"riskdesc": "Low (High)",
+					"desc": "<p>The web/application server is leaking version information via the \"Server\" HTTP response header. Access to such information may facilitate attackers identifying other vulnerabilities your web/application server is subject to.</p>",
+					"instances":[ 
+						{
+							"id": "11",
+							"uri": "http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/LogoSvg-Ci2gI_2b.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "nginx/1.28.3",
+							"otherinfo": ""
+						},
+						{
+							"id": "4",
+							"uri": "http://localhost:8081/build/assets/Welcome-C2vTbz31.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/Welcome-C2vTbz31.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "nginx/1.28.3",
+							"otherinfo": ""
+						},
+						{
+							"id": "1",
+							"uri": "http://localhost:8081/favicon.png",
+							"nodeName": "http:\/\/localhost:8081\/favicon.png",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "nginx/1.28.3",
+							"otherinfo": ""
+						},
+						{
+							"id": "2",
+							"uri": "http://localhost:8081/robots.txt",
+							"nodeName": "http:\/\/localhost:8081\/robots.txt",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "nginx/1.28.3",
+							"otherinfo": ""
+						},
+						{
+							"id": "8",
+							"uri": "http://localhost:8081/sitemap.xml",
+							"nodeName": "http:\/\/localhost:8081\/sitemap.xml",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "nginx/1.28.3",
+							"otherinfo": ""
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Ensure that your web server, application server, load balancer, etc. is configured to suppress the \"Server\" header or provide generic details.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://httpd.apache.org/docs/current/mod/core.html#servertokens</p><p>https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff648552(v=pandp.10)</p><p>https://www.troyhunt.com/shhh-dont-let-your-response-headers/</p>",
+					"cweid": "497",
+					"wascid": "13",
+					"sourceid": "16"
+				},
+				{
+					"pluginid": "10096",
+					"alertRef": "10096",
+					"alert": "Timestamp Disclosure - Unix",
+					"name": "Timestamp Disclosure - Unix",
+					"riskcode": "1",
+					"confidence": "1",
+					"riskdesc": "Low (Low)",
+					"desc": "<p>A timestamp was disclosed by the application/web server. - Unix</p>",
+					"instances":[ 
+						{
+							"id": "69",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1508970993",
+							"otherinfo": "1508970993, which evaluates to: 2017-10-25 22:36:33."
+						},
+						{
+							"id": "53",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1634760805",
+							"otherinfo": "1634760805, which evaluates to: 2021-10-20 20:13:25."
+						},
+						{
+							"id": "55",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1797285236",
+							"otherinfo": "1797285236, which evaluates to: 2026-12-14 21:53:56."
+						},
+						{
+							"id": "68",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1899447441",
+							"otherinfo": "1899447441, which evaluates to: 2030-03-11 08:17:21."
+						},
+						{
+							"id": "54",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "2036477234",
+							"otherinfo": "2036477234, which evaluates to: 2034-07-14 08:07:14."
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Manually confirm that the timestamp data is not sensitive, and that the data cannot be aggregated to disclose exploitable patterns.</p>",
+					"otherinfo": "<p>1508970993, which evaluates to: 2017-10-25 22:36:33.</p>",
+					"reference": "<p>https://cwe.mitre.org/data/definitions/200.html</p>",
+					"cweid": "497",
+					"wascid": "13",
+					"sourceid": "20"
+				},
+				{
+					"pluginid": "10021",
+					"alertRef": "10021",
+					"alert": "X-Content-Type-Options Header Missing",
+					"name": "X-Content-Type-Options Header Missing",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>The Anti-MIME-Sniffing header X-Content-Type-Options was not set to 'nosniff'. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.</p>",
+					"instances":[ 
+						{
+							"id": "12",
+							"uri": "http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/LogoSvg-Ci2gI_2b.js",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "6",
+							"uri": "http://localhost:8081/build/assets/Welcome-C2vTbz31.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/Welcome-C2vTbz31.js",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "18",
+							"uri": "http://localhost:8081/build/assets/app-Bb_eEper.css",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-Bb_eEper.css",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "324",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "3",
+							"uri": "http://localhost:8081/favicon.png",
+							"nodeName": "http:\/\/localhost:8081\/favicon.png",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.</p>",
+					"otherinfo": "<p>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</p><p>At \"High\" threshold this scan rule will not alert on client or server error responses.</p>",
+					"reference": "<p>https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)</p><p>https://owasp.org/www-community/Security_Headers</p>",
+					"cweid": "693",
+					"wascid": "15",
+					"sourceid": "16"
+				},
+				{
+					"pluginid": "10027",
+					"alertRef": "10027",
+					"alert": "Information Disclosure - Suspicious Comments",
+					"name": "Information Disclosure - Suspicious Comments",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The response appears to contain suspicious comments which may help an attacker.</p>",
+					"instances":[ 
+						{
+							"id": "51",
+							"uri": "http://localhost:8081/build/assets/app-BlFnSBxp.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-BlFnSBxp.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "* The buffer module from node.js, for the br",
+							"otherinfo": "The following pattern was used: \\bFROM\\b and was detected in likely comment: \"/*!\n * The buffer module from node.js, for the browser.\n *\n * @author   Feross Aboukhadijeh <https://feross.org>\n * @license  MI\", see evidence field for the suspicious comment/snippet."
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>Remove all comments that return information that may help an attacker and fix any underlying problems they refer to.</p>",
+					"otherinfo": "<p>The following pattern was used: \\bFROM\\b and was detected in likely comment: \"/*!</p><p> * The buffer module from node.js, for the browser.</p><p> *</p><p> * @author   Feross Aboukhadijeh <https://feross.org></p><p> * @license  MI\", see evidence field for the suspicious comment/snippet.</p>",
+					"reference": "",
+					"cweid": "615",
+					"wascid": "13",
+					"sourceid": "20"
+				},
+				{
+					"pluginid": "10109",
+					"alertRef": "10109",
+					"alert": "Modern Web Application",
+					"name": "Modern Web Application",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The application appears to be a modern web application. If you need to explore it automatically then the Ajax Spider may well be more effective than the standard one.</p>",
+					"instances":[ 
+						{
+							"id": "19",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "<script type=\"text/javascript\">const Ziggy={\"url\":\"http:\\/\\/localhost:8081\",\"port\":8081,\"defaults\":{},\"routes\":{\"dusk.login\":{\"uri\":\"_dusk\\/login\\/{userId}\\/{guard?}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"userId\",\"guard\"]},\"dusk.logout\":{\"uri\":\"_dusk\\/logout\\/{guard?}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"guard\"]},\"dusk.user\":{\"uri\":\"_dusk\\/user\\/{guard?}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"guard\"]},\"sanctum.csrf-cookie\":{\"uri\":\"sanctum\\/csrf-cookie\",\"methods\":[\"GET\",\"HEAD\"]},\"ignition.healthCheck\":{\"uri\":\"_ignition\\/health-check\",\"methods\":[\"GET\",\"HEAD\"]},\"ignition.executeSolution\":{\"uri\":\"_ignition\\/execute-solution\",\"methods\":[\"POST\"]},\"ignition.updateConfig\":{\"uri\":\"_ignition\\/update-config\",\"methods\":[\"POST\"]},\"claim.v1\":{\"uri\":\"api\\/claim\\/v1\\/{campaign}\",\"methods\":[\"POST\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"dashboard\":{\"uri\":\"dashboard\",\"methods\":[\"GET\",\"HEAD\"]},\"terms\":{\"uri\":\"terms\",\"methods\":[\"GET\",\"HEAD\"]},\"privacy\":{\"uri\":\"privacy\",\"methods\":[\"GET\",\"HEAD\"]},\"faqs\":{\"uri\":\"faqs\",\"methods\":[\"GET\",\"HEAD\"]},\"profile.edit\":{\"uri\":\"profile\",\"methods\":[\"GET\",\"HEAD\"]},\"profile.update\":{\"uri\":\"profile\",\"methods\":[\"PATCH\"]},\"profile.destroy\":{\"uri\":\"profile\",\"methods\":[\"DELETE\"]},\"profile.tokens.create\":{\"uri\":\"profile\\/tokens\",\"methods\":[\"POST\"]},\"profile.tokens.revoke\":{\"uri\":\"profile\\/tokens\\/{token}\",\"methods\":[\"DELETE\"],\"parameters\":[\"token\"]},\"campaigns.index\":{\"uri\":\"campaigns\",\"methods\":[\"GET\",\"HEAD\"]},\"campaigns.create\":{\"uri\":\"campaigns\\/create\",\"methods\":[\"GET\",\"HEAD\"]},\"campaigns.store\":{\"uri\":\"campaigns\",\"methods\":[\"POST\"]},\"campaigns.show\":{\"uri\":\"campaigns\\/{campaign}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"campaigns.edit\":{\"uri\":\"campaigns\\/{campaign}\\/edit\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"campaigns.update\":{\"uri\":\"campaigns\\/{campaign}\",\"methods\":[\"PUT\",\"PATCH\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"campaigns.destroy\":{\"uri\":\"campaigns\\/{campaign}\",\"methods\":[\"DELETE\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"campaigns.check-claims\":{\"uri\":\"campaigns\\/{campaign}\\/check-claims\",\"methods\":[\"POST\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"campaigns.refund\":{\"uri\":\"campaigns\\/{campaign}\\/refund\",\"methods\":[\"POST\"],\"parameters\":[\"campaign\"],\"bindings\":{\"campaign\":\"id\"}},\"codes.index\":{\"uri\":\"codes\",\"methods\":[\"GET\",\"HEAD\"]},\"codes.create\":{\"uri\":\"codes\\/create\",\"methods\":[\"GET\",\"HEAD\"]},\"codes.store\":{\"uri\":\"codes\",\"methods\":[\"POST\"]},\"codes.show\":{\"uri\":\"codes\\/{code}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"code\"]},\"codes.edit\":{\"uri\":\"codes\\/{code}\\/edit\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"code\"]},\"codes.update\":{\"uri\":\"codes\\/{code}\",\"methods\":[\"PUT\",\"PATCH\"],\"parameters\":[\"code\"]},\"codes.destroy\":{\"uri\":\"codes\\/{code}\",\"methods\":[\"DELETE\"],\"parameters\":[\"code\"]},\"register\":{\"uri\":\"register\",\"methods\":[\"GET\",\"HEAD\"]},\"login\":{\"uri\":\"login\",\"methods\":[\"GET\",\"HEAD\"]},\"password.request\":{\"uri\":\"forgot-password\",\"methods\":[\"GET\",\"HEAD\"]},\"password.email\":{\"uri\":\"forgot-password\",\"methods\":[\"POST\"]},\"password.reset\":{\"uri\":\"reset-password\\/{token}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"token\"]},\"password.store\":{\"uri\":\"reset-password\",\"methods\":[\"POST\"]},\"verification.notice\":{\"uri\":\"verify-email\",\"methods\":[\"GET\",\"HEAD\"]},\"verification.verify\":{\"uri\":\"verify-email\\/{id}\\/{hash}\",\"methods\":[\"GET\",\"HEAD\"],\"parameters\":[\"id\",\"hash\"]},\"verification.send\":{\"uri\":\"email\\/verification-notification\",\"methods\":[\"POST\"]},\"password.confirm\":{\"uri\":\"confirm-password\",\"methods\":[\"GET\",\"HEAD\"]},\"password.update\":{\"uri\":\"password\",\"methods\":[\"PUT\"]},\"logout\":{\"uri\":\"logout\",\"methods\":[\"POST\"]}}};!function(t,e){\"object\"==typeof exports&&\"undefined\"!=typeof module?module.exports=e():\"function\"==typeof define&&define.amd?define(e):(t||self).route=e()}(this,function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,\"value\"in r&&(r.writable=!0),Object.defineProperty(t,u(r.key),r)}}function e(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),Object.defineProperty(e,\"prototype\",{writable:!1}),e}function n(){return n=Object.assign?Object.assign.bind():function(t){for(var e=1;e<arguments.length;e++){var n=arguments[e];for(var r in n)({}).hasOwnProperty.call(n,r)&&(t[r]=n[r])}return t},n.apply(null,arguments)}function r(t){return r=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},r(t)}function o(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(o=function(){return!!t})()}function i(t,e){return i=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},i(t,e)}function u(t){var e=function(t){if(\"object\"!=typeof t||!t)return t;var e=t[Symbol.toPrimitive];if(void 0!==e){var n=e.call(t,\"string\");if(\"object\"!=typeof n)return n;throw new TypeError(\"@@toPrimitive must return a primitive value.\")}return String(t)}(t);return\"symbol\"==typeof e?e:e+\"\"}function f(t){var e=\"function\"==typeof Map?new Map:void 0;return f=function(t){if(null===t||!function(t){try{return-1!==Function.toString.call(t).indexOf(\"[native code]\")}catch(e){return\"function\"==typeof t}}(t))return t;if(\"function\"!=typeof t)throw new TypeError(\"Super expression must either be null or a function\");if(void 0!==e){if(e.has(t))return e.get(t);e.set(t,n)}function n(){return function(t,e,n){if(o())return Reflect.construct.apply(null,arguments);var r=[null];r.push.apply(r,e);var u=new(t.bind.apply(t,r));return n&&i(u,n.prototype),u}(t,arguments,r(this).constructor)}return n.prototype=Object.create(t.prototype,{constructor:{value:n,enumerable:!1,writable:!0,configurable:!0}}),i(n,t)},f(t)}const c=String.prototype.replace,l=/%20/g,a={RFC1738:function(t){return c.call(t,l,\"+\")},RFC3986:function(t){return String(t)}};var s=\"RFC3986\";const p=Object.prototype.hasOwnProperty,y=Array.isArray,d=new WeakMap;var b=function(t,e){return d.set(t,e),t};function h(t){return d.has(t)}var v=function(t){return d.get(t)},m=function(t,e){d.set(t,e)};const g=function(){const t=[];for(let e=0;e<256;++e)t.push(\"%\"+((e<16?\"0\":\"\")+e.toString(16)).toUpperCase());return t}(),w=function(t,e){const n=e&&e.plainObjects?Object.create(null):{};for(let e=0;e<t.length;++e)void 0!==t[e]&&(n[e]=t[e]);return n},j=function t(e,n,r){if(!n)return e;if(\"object\"!=typeof n){if(y(e))e.push(n);else{if(!e||\"object\"!=typeof e)return[e,n];if(h(e)){var o=v(e)+1;e[o]=n,m(e,o)}else(r&&(r.plainObjects||r.allowPrototypes)||!p.call(Object.prototype,n))&&(e[n]=!0)}return e}if(!e||\"object\"!=typeof e){if(h(n)){for(var i=Object.keys(n),u=r&&r.plainObjects?{__proto__:null,0:e}:{0:e},f=0;f<i.length;f++)u[parseInt(i[f],10)+1]=n[i[f]];return b(u,v(n)+1)}return[e].concat(n)}let c=e;return y(e)&&!y(n)&&(c=w(e,r)),y(e)&&y(n)?(n.forEach(function(n,o){if(p.call(e,o)){const i=e[o];i&&\"object\"==typeof i&&n&&\"object\"==typeof n?e[o]=t(i,n,r):e.push(n)}else e[o]=n}),e):Object.keys(n).reduce(function(e,o){const i=n[o];return e[o]=p.call(e,o)?t(e[o],i,r):i,e},c)},O=1024,E=function(t,e,n,r){if(h(t)){var o=v(t)+1;return t[o]=e,m(t,o),t}var i=[].concat(t,e);return i.length>n?b(w(i,{plainObjects:r}),i.length-1):i},T=function(t,e){if(y(t)){const n=[];for(let r=0;r<t.length;r+=1)n.push(e(t[r]));return n}return e(t)},R=Object.prototype.hasOwnProperty,k={brackets:function(t){return t+\"[]\"},comma:\"comma\",indices:function(t,e){return t+\"[\"+e+\"]\"},repeat:function(t){return t}},S=Array.isArray,I=Array.prototype.push,A=function(t,e){I.apply(t,S(e)?e:[e])},D=Date.prototype.toISOString,$={addQueryPrefix:!1,allowDots:!1,allowEmptyArrays:!1,arrayFormat:\"indices\",charset:\"utf-8\",charsetSentinel:!1,delimiter:\"&\",encode:!0,encodeDotInKeys:!1,encoder:function(t,e,n,r,o){if(0===t.length)return t;let i=t;if(\"symbol\"==typeof t?i=Symbol.prototype.toString.call(t):\"string\"!=typeof t&&(i=String(t)),\"iso-8859-1\"===n)return escape(i).replace(/%u[0-9a-f]{4}/gi,function(t){return\"%26%23\"+parseInt(t.slice(2),16)+\"%3B\"});let u=\"\";for(let t=0;t<i.length;t+=O){const e=i.length>=O?i.slice(t,t+O):i,n=[];for(let t=0;t<e.length;++t){let r=e.charCodeAt(t);45===r||46===r||95===r||126===r||r>=48&&r<=57||r>=65&&r<=90||r>=97&&r<=122||\"RFC1738\"===o&&(40===r||41===r)?n[n.length]=e.charAt(t):r<128?n[n.length]=g[r]:r<2048?n[n.length]=g[192|r>>6]+g[128|63&r]:r<55296||r>=57344?n[n.length]=g[224|r>>12]+g[128|r>>6&63]+g[128|63&r]:(t+=1,r=65536+((1023&r)<<10|1023&e.charCodeAt(t)),n[n.length]=g[240|r>>18]+g[128|r>>12&63]+g[128|r>>6&63]+g[128|63&r])}u+=n.join(\"\")}return u},encodeValuesOnly:!1,format:s,formatter:a[s],indices:!1,serializeDate:function(t){return D.call(t)},skipNulls:!1,strictNullHandling:!1},N={},_=function(t,e,n,r,o,i,u,f,c,l,a,s,p,y,d,b,h,v){let m=t,g=v,w=0,j=!1;for(;void 0!==(g=g.get(N))&&!j;){const e=g.get(t);if(w+=1,void 0!==e){if(e===w)throw new RangeError(\"Cyclic object value\");j=!0}void 0===g.get(N)&&(w=0)}if(\"function\"==typeof l?m=l(e,m):m instanceof Date?m=p(m):\"comma\"===n&&S(m)&&(m=T(m,function(t){return t instanceof Date?p(t):t})),null===m){if(i)return c&&!b?c(e,$.encoder,h,\"key\",y):e;m=\"\"}if(\"string\"==typeof(O=m)||\"number\"==typeof O||\"boolean\"==typeof O||\"symbol\"==typeof O||\"bigint\"==typeof O||function(t){return!(!t||\"object\"!=typeof t||!(t.constructor&&t.constructor.isBuffer&&t.constructor.isBuffer(t)))}(m))return c?[d(b?e:c(e,$.encoder,h,\"key\",y))+\"=\"+d(c(m,$.encoder,h,\"value\",y))]:[d(e)+\"=\"+d(String(m))];var O;const E=[];if(void 0===m)return E;let R;if(\"comma\"===n&&S(m))b&&c&&(m=T(m,c)),R=[{value:m.length>0?m.join(\",\")||null:void 0}];else if(S(l))R=l;else{const t=Object.keys(m);R=a?t.sort(a):t}const k=f?e.replace(/\\./g,\"%2E\"):e,I=r&&S(m)&&1===m.length?k+\"[]\":k;if(o&&S(m)&&0===m.length)return I+\"[]\";for(let e=0;e<R.length;++e){const g=R[e],j=\"object\"==typeof g&&void 0!==g.value?g.value:m[g];if(u&&null===j)continue;const O=s&&f?g.replace(/\\./g,\"%2E\"):g,T=S(m)?\"function\"==typeof n?n(I,O):I:I+(s?\".\"+O:\"[\"+O+\"]\");v.set(t,w);const k=new WeakMap;k.set(N,v),A(E,_(j,T,n,r,o,i,u,f,\"comma\"===n&&b&&S(m)?null:c,l,a,s,p,y,d,b,h,k))}return E},x=Object.prototype.hasOwnProperty,C=Array.isArray,P={allowDots:!1,allowEmptyArrays:!1,allowPrototypes:!1,allowSparse:!1,arrayLimit:20,charset:\"utf-8\",charsetSentinel:!1,comma:!1,decodeDotInKeys:!1,decoder:function(t,e,n){const r=t.replace(/\\+/g,\" \");if(\"iso-8859-1\"===n)return r.replace(/%[0-9a-f]{2}/gi,unescape);try{return decodeURIComponent(r)}catch(t){return r}},delimiter:\"&\",depth:5,duplicates:\"combine\",ignoreQueryPrefix:!1,interpretNumericEntities:!1,parameterLimit:1e3,parseArrays:!0,plainObjects:!1,strictNullHandling:!1},F=function(t){return t.replace(/&#(\\d+);/g,function(t,e){return String.fromCharCode(parseInt(e,10))})},U=function(t,e){return t&&\"string\"==typeof t&&e.comma&&t.indexOf(\",\")>-1?t.split(\",\"):t},q=function(t,e,n,r){if(!t)return;const o=n.allowDots?t.replace(/\\.([^.[]+)/g,\"[$1]\"):t,i=/(\\[[^[\\]]*])/g;let u=n.depth>0&&/(\\[[^[\\]]*])/.exec(o);const f=u?o.slice(0,u.index):o,c=[];if(f){if(!n.plainObjects&&x.call(Object.prototype,f)&&!n.allowPrototypes)return;c.push(f)}let l=0;for(;n.depth>0&&null!==(u=i.exec(o))&&l<n.depth;){if(l+=1,!n.plainObjects&&x.call(Object.prototype,u[1].slice(1,-1))&&!n.allowPrototypes)return;c.push(u[1])}return u&&c.push(\"[\"+o.slice(u.index)+\"]\"),function(t,e,n,r){let o=r?e:U(e,n);for(let e=t.length-1;e>=0;--e){let r;const i=t[e];if(\"[]\"===i&&n.parseArrays)r=h(o)?o:n.allowEmptyArrays&&(\"\"===o||n.strictNullHandling&&null===o)?[]:E([],o,n.arrayLimit,n.plainObjects);else{r=n.plainObjects?Object.create(null):{};const t=\"[\"===i.charAt(0)&&\"]\"===i.charAt(i.length-1)?i.slice(1,-1):i,e=n.decodeDotInKeys?t.replace(/%2E/g,\".\"):t,u=parseInt(e,10);n.parseArrays||\"\"!==e?!isNaN(u)&&i!==e&&String(u)===e&&u>=0&&n.parseArrays&&u<=n.arrayLimit?(r=[],r[u]=o):\"__proto__\"!==e&&(r[e]=o):r={0:o}}o=r}return o}(c,e,n,r)};function K(t,e){const n=function(t){if(!t)return P;if(void 0!==t.allowEmptyArrays&&\"boolean\"!=typeof t.allowEmptyArrays)throw new TypeError(\"`allowEmptyArrays` option can only be `true` or `false`, when provided\");if(void 0!==t.decodeDotInKeys&&\"boolean\"!=typeof t.decodeDotInKeys)throw new TypeError(\"`decodeDotInKeys` option can only be `true` or `false`, when provided\");if(null!=t.decoder&&\"function\"!=typeof t.decoder)throw new TypeError(\"Decoder has to be a function.\");if(void 0!==t.charset&&\"utf-8\"!==t.charset&&\"iso-8859-1\"!==t.charset)throw new TypeError(\"The charset option must be either utf-8, iso-8859-1, or undefined\");const e=void 0===t.charset?P.charset:t.charset,n=void 0===t.duplicates?P.duplicates:t.duplicates;if(\"combine\"!==n&&\"first\"!==n&&\"last\"!==n)throw new TypeError(\"The duplicates option must be either combine, first, or last\");return{allowDots:void 0===t.allowDots?!0===t.decodeDotInKeys||P.allowDots:!!t.allowDots,allowEmptyArrays:\"boolean\"==typeof t.allowEmptyArrays?!!t.allowEmptyArrays:P.allowEmptyArrays,allowPrototypes:\"boolean\"==typeof t.allowPrototypes?t.allowPrototypes:P.allowPrototypes,allowSparse:\"boolean\"==typeof t.allowSparse?t.allowSparse:P.allowSparse,arrayLimit:\"number\"==typeof t.arrayLimit?t.arrayLimit:P.arrayLimit,charset:e,charsetSentinel:\"boolean\"==typeof t.charsetSentinel?t.charsetSentinel:P.charsetSentinel,comma:\"boolean\"==typeof t.comma?t.comma:P.comma,decodeDotInKeys:\"boolean\"==typeof t.decodeDotInKeys?t.decodeDotInKeys:P.decodeDotInKeys,decoder:\"function\"==typeof t.decoder?t.decoder:P.decoder,delimiter:\"string\"==typeof t.delimiter||(r=t.delimiter,\"[object RegExp]\"===Object.prototype.toString.call(r))?t.delimiter:P.delimiter,depth:\"number\"==typeof t.depth||!1===t.depth?+t.depth:P.depth,duplicates:n,ignoreQueryPrefix:!0===t.ignoreQueryPrefix,interpretNumericEntities:\"boolean\"==typeof t.interpretNumericEntities?t.interpretNumericEntities:P.interpretNumericEntities,parameterLimit:\"number\"==typeof t.parameterLimit?t.parameterLimit:P.parameterLimit,parseArrays:!1!==t.parseArrays,plainObjects:\"boolean\"==typeof t.plainObjects?t.plainObjects:P.plainObjects,strictNullHandling:\"boolean\"==typeof t.strictNullHandling?t.strictNullHandling:P.strictNullHandling};var r}(e);if(\"\"===t||null==t)return n.plainObjects?Object.create(null):{};const r=\"string\"==typeof t?function(t,e){const n={__proto__:null},r=(e.ignoreQueryPrefix?t.replace(/^\\?/,\"\"):t).split(e.delimiter,Infinity===e.parameterLimit?void 0:e.parameterLimit);let o,i=-1,u=e.charset;if(e.charsetSentinel)for(o=0;o<r.length;++o)0===r[o].indexOf(\"utf8=\")&&(\"utf8=%E2%9C%93\"===r[o]?u=\"utf-8\":\"utf8=%26%2310003%3B\"===r[o]&&(u=\"iso-8859-1\"),i=o,o=r.length);for(o=0;o<r.length;++o){if(o===i)continue;const t=r[o],f=t.indexOf(\"]=\"),c=-1===f?t.indexOf(\"=\"):f+1;let l,a;-1===c?(l=e.decoder(t,P.decoder,u,\"key\"),a=e.strictNullHandling?null:\"\"):(l=e.decoder(t.slice(0,c),P.decoder,u,\"key\"),a=T(U(t.slice(c+1),e),function(t){return e.decoder(t,P.decoder,u,\"value\")})),a&&e.interpretNumericEntities&&\"iso-8859-1\"===u&&(a=F(a)),t.indexOf(\"[]=\")>-1&&(a=C(a)?[a]:a);const s=x.call(n,l);s&&\"combine\"===e.duplicates?n[l]=E(n[l],a,e.arrayLimit,e.plainObjects):s&&\"last\"!==e.duplicates||(n[l]=a)}return n}(t,n):t;let o=n.plainObjects?Object.create(null):{};const i=Object.keys(r);for(let e=0;e<i.length;++e){const u=i[e],f=q(u,r[u],n,\"string\"==typeof t);o=j(o,f,n)}return!0===n.allowSparse?o:function(t){const e=[{obj:{o:t},prop:\"o\"}],n=[];for(let t=0;t<e.length;++t){const r=e[t],o=r.obj[r.prop],i=Object.keys(o);for(let t=0;t<i.length;++t){const r=i[t],u=o[r];\"object\"==typeof u&&null!==u&&-1===n.indexOf(u)&&(e.push({obj:o,prop:r}),n.push(u))}}return function(t){for(;t.length>1;){const e=t.pop(),n=e.obj[e.prop];if(y(n)){const t=[];for(let e=0;e<n.length;++e)void 0!==n[e]&&t.push(n[e]);e.obj[e.prop]=t}}}(e),t}(o)}var Z=/*#__PURE__*/function(){function t(t,e,n){var r,o;this.name=t,this.definition=e,this.bindings=null!=(r=e.bindings)?r:{},this.wheres=null!=(o=e.wheres)?o:{},this.config=n}var n=t.prototype;return n.matchesUrl=function(t){var e,n=this;if(!this.definition.methods.includes(\"GET\"))return!1;var r=this.template.replace(/[.*+$()[\\]]/g,\"\\\\$&\").replace(/(\\/?){([^}?]*)(\\??)}/g,function(t,e,r,o){var i,u=\"(?<\"+r+\">\"+((null==(i=n.wheres[r])?void 0:i.replace(/(^\\^)|(\\$$)/g,\"\"))||\"[^/?]+\")+\")\";return o?\"(\"+e+u+\")?\":\"\"+e+u}).replace(/^\\w+:\\/\\//,\"\"),o=t.replace(/^\\w+:\\/\\//,\"\").split(\"?\"),i=o[0],u=o[1],f=null!=(e=new RegExp(\"^\"+r+\"/?$\").exec(i))?e:new RegExp(\"^\"+r+\"/?$\").exec(decodeURI(i));if(f){for(var c in f.groups)f.groups[c]=\"string\"==typeof f.groups[c]?decodeURIComponent(f.groups[c]):f.groups[c];return{params:f.groups,query:K(u)}}return!1},n.compile=function(t){var e=this;return this.parameterSegments.length?this.template.replace(/{([^}?]+)(\\??)}/g,function(n,r,o){var i,u;if(!o&&[null,void 0].includes(t[r]))throw new Error(\"Ziggy error: '\"+r+\"' parameter is required for route '\"+e.name+\"'.\");if(e.wheres[r]&&!new RegExp(\"^\"+(o?\"(\"+e.wheres[r]+\")?\":e.wheres[r])+\"$\").test(null!=(u=t[r])?u:\"\"))throw new Error(\"Ziggy error: '\"+r+\"' parameter '\"+t[r]+\"' does not match required format '\"+e.wheres[r]+\"' for route '\"+e.name+\"'.\");return encodeURI(null!=(i=t[r])?i:\"\").replace(/%7C/g,\"|\").replace(/%25/g,\"%\").replace(/\\$/g,\"%24\")}).replace(this.config.absolute?/(\\.[^/]+?)(\\/\\/)/:/(^)(\\/\\/)/,\"$1/\").replace(/\\/+$/,\"\"):this.template},e(t,[{key:\"template\",get:function(){var t=(this.origin+\"/\"+this.definition.uri).replace(/\\/+$/,\"\");return\"\"===t?\"/\":t}},{key:\"origin\",get:function(){return this.config.absolute?this.definition.domain?\"\"+this.config.url.match(/^\\w+:\\/\\//)[0]+this.definition.domain+(this.config.port?\":\"+this.config.port:\"\"):this.config.url:\"\"}},{key:\"parameterSegments\",get:function(){var t,e;return null!=(t=null==(e=this.template.match(/{[^}?]+\\??}/g))?void 0:e.map(function(t){return{name:t.replace(/{|\\??}/g,\"\"),required:!/\\?}$/.test(t)}}))?t:[]}}])}(),B=/*#__PURE__*/function(t){function r(e,r,o,i){var u;if(void 0===o&&(o=!0),(u=t.call(this)||this).t=null!=i?i:\"undefined\"!=typeof Ziggy?Ziggy:null==globalThis?void 0:globalThis.Ziggy,!u.t&&\"undefined\"!=typeof document&&document.getElementById(\"ziggy-routes-json\")&&(globalThis.Ziggy=JSON.parse(document.getElementById(\"ziggy-routes-json\").textContent),u.t=globalThis.Ziggy),u.t=n({},u.t,{absolute:o}),e){if(!u.t.routes[e])throw new Error(\"Ziggy error: route '\"+e+\"' is not in the route list.\");u.i=new Z(e,u.t.routes[e],u.t),u.u=u.l(r)}return u}var o,u;u=t,(o=r).prototype=Object.create(u.prototype),o.prototype.constructor=o,i(o,u);var f=r.prototype;return f.toString=function(){var t=this,e=Object.keys(this.u).filter(function(e){return!t.i.parameterSegments.some(function(t){return t.name===e})}).filter(function(t){return\"_query\"!==t}).reduce(function(e,r){var o;return n({},e,((o={})[r]=t.u[r],o))},{});return this.i.compile(this.u)+function(t,e){let n=t;const r=function(t){if(!t)return $;if(void 0!==t.allowEmptyArrays&&\"boolean\"!=typeof t.allowEmptyArrays)throw new TypeError(\"`allowEmptyArrays` option can only be `true` or `false`, when provided\");if(void 0!==t.encodeDotInKeys&&\"boolean\"!=typeof t.encodeDotInKeys)throw new TypeError(\"`encodeDotInKeys` option can only be `true` or `false`, when provided\");if(null!=t.encoder&&\"function\"!=typeof t.encoder)throw new TypeError(\"Encoder has to be a function.\");const e=t.charset||$.charset;if(void 0!==t.charset&&\"utf-8\"!==t.charset&&\"iso-8859-1\"!==t.charset)throw new TypeError(\"The charset option must be either utf-8, iso-8859-1, or undefined\");let n=s;if(void 0!==t.format){if(!R.call(a,t.format))throw new TypeError(\"Unknown format option provided.\");n=t.format}const r=a[n];let o,i=$.filter;if((\"function\"==typeof t.filter||S(t.filter))&&(i=t.filter),o=t.arrayFormat in k?t.arrayFormat:\"indices\"in t?t.indices?\"indices\":\"repeat\":$.arrayFormat,\"commaRoundTrip\"in t&&\"boolean\"!=typeof t.commaRoundTrip)throw new TypeError(\"`commaRoundTrip` must be a boolean, or absent\");return{addQueryPrefix:\"boolean\"==typeof t.addQueryPrefix?t.addQueryPrefix:$.addQueryPrefix,allowDots:void 0===t.allowDots?!0===t.encodeDotInKeys||$.allowDots:!!t.allowDots,allowEmptyArrays:\"boolean\"==typeof t.allowEmptyArrays?!!t.allowEmptyArrays:$.allowEmptyArrays,arrayFormat:o,charset:e,charsetSentinel:\"boolean\"==typeof t.charsetSentinel?t.charsetSentinel:$.charsetSentinel,commaRoundTrip:t.commaRoundTrip,delimiter:void 0===t.delimiter?$.delimiter:t.delimiter,encode:\"boolean\"==typeof t.encode?t.encode:$.encode,encodeDotInKeys:\"boolean\"==typeof t.encodeDotInKeys?t.encodeDotInKeys:$.encodeDotInKeys,encoder:\"function\"==typeof t.encoder?t.encoder:$.encoder,encodeValuesOnly:\"boolean\"==typeof t.encodeValuesOnly?t.encodeValuesOnly:$.encodeValuesOnly,filter:i,format:n,formatter:r,serializeDate:\"function\"==typeof t.serializeDate?t.serializeDate:$.serializeDate,skipNulls:\"boolean\"==typeof t.skipNulls?t.skipNulls:$.skipNulls,sort:\"function\"==typeof t.sort?t.sort:null,strictNullHandling:\"boolean\"==typeof t.strictNullHandling?t.strictNullHandling:$.strictNullHandling}}(e);let o,i;\"function\"==typeof r.filter?(i=r.filter,n=i(\"\",n)):S(r.filter)&&(i=r.filter,o=i);const u=[];if(\"object\"!=typeof n||null===n)return\"\";const f=k[r.arrayFormat],c=\"comma\"===f&&r.commaRoundTrip;o||(o=Object.keys(n)),r.sort&&o.sort(r.sort);const l=new WeakMap;for(let t=0;t<o.length;++t){const e=o[t];r.skipNulls&&null===n[e]||A(u,_(n[e],e,f,c,r.allowEmptyArrays,r.strictNullHandling,r.skipNulls,r.encodeDotInKeys,r.encode?r.encoder:null,r.filter,r.sort,r.allowDots,r.serializeDate,r.format,r.formatter,r.encodeValuesOnly,r.charset,l))}const p=u.join(r.delimiter);let y=!0===r.addQueryPrefix?\"?\":\"\";return r.charsetSentinel&&(y+=\"iso-8859-1\"===r.charset?\"utf8=%26%2310003%3B&\":\"utf8=%E2%9C%93&\"),p.length>0?y+p:\"\"}(n({},e,this.u._query),{addQueryPrefix:!0,arrayFormat:\"indices\",encodeValuesOnly:!0,skipNulls:!0,encoder:function(t,e){return\"boolean\"==typeof t?Number(t):e(t)}})},f.p=function(t){var e=this;t?this.t.absolute&&t.startsWith(\"/\")&&(t=this.h().host+t):t=this.v();var r={},o=Object.entries(this.t.routes).find(function(n){return r=new Z(n[0],n[1],e.t).matchesUrl(t)})||[void 0,void 0];return n({name:o[0]},r,{route:o[1]})},f.v=function(){var t=this.h(),e=t.pathname,n=t.search;return(this.t.absolute?t.host+e:e.replace(this.t.url.replace(/^\\w*:\\/\\/[^/]+/,\"\"),\"\").replace(/^\\/+/,\"/\"))+n},f.current=function(t,e){var r=this.p(),o=r.name,i=r.params,u=r.query,f=r.route;if(!t)return o;var c=new RegExp(\"^\"+t.replace(/\\./g,\"\\\\.\").replace(/\\*/g,\".*\")+\"$\").test(o);if([null,void 0].includes(e)||!c)return c;var l=new Z(o,f,this.t);e=this.l(e,l);var a=n({},i,u);if(Object.values(e).every(function(t){return!t})&&!Object.values(a).some(function(t){return void 0!==t}))return!0;var s=function(t,e){return Object.entries(t).every(function(t){var n=t[0],r=t[1];return Array.isArray(r)&&Array.isArray(e[n])?r.every(function(t){return e[n].includes(t)||e[n].includes(decodeURIComponent(t))}):\"object\"==typeof r&&\"object\"==typeof e[n]&&null!==r&&null!==e[n]?s(r,e[n]):e[n]==r||e[n]==decodeURIComponent(r)})};return s(e,a)},f.h=function(){var t,e,n,r,o,i,u=\"undefined\"!=typeof window?window.location:{},f=u.host,c=u.pathname,l=u.search;return{host:null!=(t=null==(e=this.t.location)?void 0:e.host)?t:void 0===f?\"\":f,pathname:null!=(n=null==(r=this.t.location)?void 0:r.pathname)?n:void 0===c?\"\":c,search:null!=(o=null==(i=this.t.location)?void 0:i.search)?o:void 0===l?\"\":l}},f.has=function(t){return this.t.routes.hasOwnProperty(t)},f.l=function(t,e){var r=this;void 0===t&&(t={}),void 0===e&&(e=this.i),null!=t||(t={}),t=[\"string\",\"number\"].includes(typeof t)?[t]:t;var o=e.parameterSegments.filter(function(t){return!r.t.defaults[t.name]});if(Array.isArray(t))t=t.reduce(function(t,e,r){var i,u;return n({},t,o[r]?((i={})[o[r].name]=e,i):\"object\"==typeof e?e:((u={})[e]=\"\",u))},{});else if(1===o.length&&!t[o[0].name]&&(t.hasOwnProperty(Object.values(e.bindings)[0])||t.hasOwnProperty(\"id\"))){var i;(i={})[o[0].name]=t,t=i}return n({},this.m(e),this.j(t,e))},f.m=function(t){var e=this;return t.parameterSegments.filter(function(t){return e.t.defaults[t.name]}).reduce(function(t,r,o){var i,u=r.name;return n({},t,((i={})[u]=e.t.defaults[u],i))},{})},f.j=function(t,e){var r=e.bindings,o=e.parameterSegments;return Object.entries(t).reduce(function(t,e){var i,u,f=e[0],c=e[1];if(!c||\"object\"!=typeof c||Array.isArray(c)||!o.some(function(t){return t.name===f}))return n({},t,((u={})[f]=c,u));if(!c.hasOwnProperty(r[f])){if(!c.hasOwnProperty(\"id\"))throw new Error(\"Ziggy error: object passed as '\"+f+\"' parameter is missing route model binding key '\"+r[f]+\"'.\");r[f]=\"id\"}return n({},t,((i={})[f]=c[r[f]],i))},{})},f.valueOf=function(){return this.toString()},e(r,[{key:\"params\",get:function(){var t=this.p();return n({},t.params,t.query)}},{key:\"routeParams\",get:function(){return this.p().params}},{key:\"queryParams\",get:function(){return this.p().query}}])}(/*#__PURE__*/f(String));return function(t,e,n,r){var o=new B(t,e,n,r);return t?o.toString():o}});\n</script>",
+							"otherinfo": "No links have been found while there are scripts, which is an indication that this is a modern web application."
+						}
+					],
+					"count": "1",
+					"systemic": true,
+					"solution": "<p>This is an informational alert and so no changes are required.</p>",
+					"otherinfo": "<p>No links have been found while there are scripts, which is an indication that this is a modern web application.</p>",
+					"reference": "",
+					"cweid": "-1",
+					"wascid": "-1",
+					"sourceid": "1"
+				},
+				{
+					"pluginid": "10049",
+					"alertRef": "10049-1",
+					"alert": "Non-Storable Content",
+					"name": "Non-Storable Content",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.</p>",
+					"instances":[ 
+						{
+							"id": "41",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "private",
+							"otherinfo": ""
+						},
+						{
+							"id": "32",
+							"uri": "http://localhost:8081/sitemap.xml",
+							"nodeName": "http:\/\/localhost:8081\/sitemap.xml",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "private",
+							"otherinfo": ""
+						}
+					],
+					"count": "2",
+					"systemic": true,
+					"solution": "<p>The content may be marked as storable by ensuring that the following conditions are satisfied:</p><p>The request method must be understood by the cache and defined as being cacheable (\"GET\", \"HEAD\", and \"POST\" are currently defined as cacheable)</p><p>The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood)</p><p>The \"no-store\" cache directive must not appear in the request or response header fields</p><p>For caching by \"shared\" caches such as \"proxy\" caches, the \"private\" response directive must not appear in the response</p><p>For caching by \"shared\" caches such as \"proxy\" caches, the \"Authorization\" header field must not appear in the request, unless the response explicitly allows it (using one of the \"must-revalidate\", \"public\", or \"s-maxage\" Cache-Control response directives)</p><p>In addition to the conditions above, at least one of the following conditions must also be satisfied by the response:</p><p>It must contain an \"Expires\" header field</p><p>It must contain a \"max-age\" response directive</p><p>For \"shared\" caches such as \"proxy\" caches, it must contain a \"s-maxage\" response directive</p><p>It must contain a \"Cache Control Extension\" that allows it to be cached</p><p>It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc7234</p><p>https://datatracker.ietf.org/doc/html/rfc7231</p><p>https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</p>",
+					"cweid": "524",
+					"wascid": "13",
+					"sourceid": "1"
+				},
+				{
+					"pluginid": "10112",
+					"alertRef": "10112",
+					"alert": "Session Management Response Identified",
+					"name": "Session Management Response Identified",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The given response has been identified as containing a session management token. The 'Other Info' field contains a set of header tokens that can be used in the Header Based Session Management Method. If the request is in a context which has a Session Management Method set to \"Auto-Detect\" then this rule will change the session management to use the tokens identified.</p>",
+					"instances":[ 
+						{
+							"id": "39",
+							"uri": "http://localhost:8081",
+							"nodeName": "http:\/\/localhost:8081",
+							"method": "GET",
+							"param": "onboardninja_session",
+							"attack": "",
+							"evidence": "onboardninja_session",
+							"otherinfo": "cookie:onboardninja_session\ncookie:XSRF-TOKEN"
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>This is an informational alert rather than a vulnerability and so there is nothing to fix.</p>",
+					"otherinfo": "<p>cookie:onboardninja_session</p><p>cookie:XSRF-TOKEN</p>",
+					"reference": "<p>https://www.zaproxy.org/docs/desktop/addons/authentication-helper/session-mgmt-id/</p>",
+					"cweid": "-1",
+					"wascid": "-1",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "10049",
+					"alertRef": "10049-3",
+					"alert": "Storable and Cacheable Content",
+					"name": "Storable and Cacheable Content",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The response contents are storable by caching components such as proxy servers, and may be retrieved directly from the cache, rather than from the origin server by the caching servers, in response to similar requests from other users. If the response data is sensitive, personal or user-specific, this may result in sensitive information being leaked. In some cases, this may even result in a user gaining complete control of the session of another user, depending on the configuration of the caching components in use in their environment. This is primarily an issue where \"shared\" caching servers such as \"proxy\" caches are configured on the local network. This configuration is typically found in corporate or educational environments, for instance.</p>",
+					"instances":[ 
+						{
+							"id": "34",
+							"uri": "http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/LogoSvg-Ci2gI_2b.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "max-age=31536000",
+							"otherinfo": ""
+						},
+						{
+							"id": "29",
+							"uri": "http://localhost:8081/build/assets/Welcome-C2vTbz31.js",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/Welcome-C2vTbz31.js",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "max-age=31536000",
+							"otherinfo": ""
+						},
+						{
+							"id": "37",
+							"uri": "http://localhost:8081/build/assets/app-Bb_eEper.css",
+							"nodeName": "http:\/\/localhost:8081\/build\/assets\/app-Bb_eEper.css",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "max-age=31536000",
+							"otherinfo": ""
+						},
+						{
+							"id": "27",
+							"uri": "http://localhost:8081/favicon.png",
+							"nodeName": "http:\/\/localhost:8081\/favicon.png",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "max-age=2592000",
+							"otherinfo": ""
+						},
+						{
+							"id": "5",
+							"uri": "http://localhost:8081/robots.txt",
+							"nodeName": "http:\/\/localhost:8081\/robots.txt",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>Validate that the response does not contain sensitive, personal or user-specific information. If it does, consider the use of the following HTTP response headers, to limit, or prevent the content being stored and retrieved from the cache by another user:</p><p>Cache-Control: no-cache, no-store, must-revalidate, private</p><p>Pragma: no-cache</p><p>Expires: 0</p><p>This configuration directs both HTTP 1.0 and HTTP 1.1 compliant caching servers to not store the response, and to not retrieve the response (without validation) from the cache, in response to a similar request.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc7234</p><p>https://datatracker.ietf.org/doc/html/rfc7231</p><p>https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</p>",
+					"cweid": "524",
+					"wascid": "13",
+					"sourceid": "16"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}

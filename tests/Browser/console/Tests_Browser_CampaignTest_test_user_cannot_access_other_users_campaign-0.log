@@ -1,0 +1,8 @@
+[
+    {
+        "level": "SEVERE",
+        "message": "http:\/\/onboard_app:8080\/campaigns\/01knfqyrfsva9x4tsvghwva4zf - Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "source": "network",
+        "timestamp": 1775423676967
+    }
+]

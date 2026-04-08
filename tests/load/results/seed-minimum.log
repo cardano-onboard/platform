@@ -1,0 +1,57 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /home/adam/cardano-onboard/POOSaaS/tests/load/seed-loadtest.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 10m30s max duration (incl. graceful stop):
+              * default: 1 iterations shared among 1 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+time="2026-04-05T14:53:20-07:00" level=info msg="Created campaign: 01knft5p1jxp1kyvag65tmc21x" source=console
+time="2026-04-05T14:53:21-07:00" level=info msg="  Created 1/500 codes..." source=console
+
+running (00m01.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m01.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:21-07:00" level=info msg="  Created 51/500 codes..." source=console
+time="2026-04-05T14:53:22-07:00" level=info msg="  Created 101/500 codes..." source=console
+
+running (00m02.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m02.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:23-07:00" level=info msg="  Created 151/500 codes..." source=console
+
+running (00m03.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m03.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:24-07:00" level=info msg="  Created 201/500 codes..." source=console
+
+running (00m04.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m04.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:24-07:00" level=info msg="  Created 251/500 codes..." source=console
+time="2026-04-05T14:53:25-07:00" level=info msg="  Created 301/500 codes..." source=console
+
+running (00m05.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m05.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:26-07:00" level=info msg="  Created 351/500 codes..." source=console
+
+running (00m06.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m06.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:26-07:00" level=info msg="  Created 401/500 codes..." source=console
+time="2026-04-05T14:53:27-07:00" level=info msg="  Created 451/500 codes..." source=console
+
+running (00m07.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 1 VUs  00m07.0s/10m0s  0/1 shared iters
+time="2026-04-05T14:53:28-07:00" level=info msg="\n=== LOAD TEST DATA SEEDED ===" source=console
+time="2026-04-05T14:53:28-07:00" level=info msg="Campaign ID: 01knft5p1jxp1kyvag65tmc21x" source=console
+time="2026-04-05T14:53:28-07:00" level=info msg="Codes created: 500" source=console
+time="2026-04-05T14:53:28-07:00" level=info msg="\nUse this campaign ID for load tests:" source=console
+time="2026-04-05T14:53:28-07:00" level=info msg="  k6 run tests/load/claim-api.js -e CAMPAIGN_ID=01knft5p1jxp1kyvag65tmc21x\n" source=console
+
+--- Seed script complete. See output above for CAMPAIGN_ID. ---
+
+running (00m07.7s), 0/1 VUs, 1 complete and 0 interrupted iterations
+default ✓ [ 100% ] 1 VUs  00m07.7s/10m0s  1/1 shared iters

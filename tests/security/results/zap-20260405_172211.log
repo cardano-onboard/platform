@@ -1,0 +1,203 @@
+Unable to find image 'ghcr.io/zaproxy/zaproxy:stable' locally
+stable: Pulling from zaproxy/zaproxy
+84a2afebaf4d: Already exists
+03d5798b4e28: Pulling fs layer
+cbc86f9bec2f: Pulling fs layer
+7a4bb520bb3f: Pulling fs layer
+54ea64e8f1a7: Pulling fs layer
+26312832d6e7: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+694a77eeec82: Pulling fs layer
+ddeb8e8bb81f: Pulling fs layer
+04c9bfddfe0a: Pulling fs layer
+5c5ce62775ba: Pulling fs layer
+80414daa6971: Pulling fs layer
+94428a06f602: Pulling fs layer
+0518d3bee6c6: Pulling fs layer
+605dcdf58e46: Pulling fs layer
+4e108a765cac: Pulling fs layer
+7b417353d040: Pulling fs layer
+f65449d4570b: Pulling fs layer
+8dfab5f77c29: Pulling fs layer
+91d5eed96c45: Pulling fs layer
+4f4fb700ef54: Waiting
+694a77eeec82: Waiting
+ddeb8e8bb81f: Waiting
+04c9bfddfe0a: Waiting
+5c5ce62775ba: Waiting
+80414daa6971: Waiting
+94428a06f602: Waiting
+0518d3bee6c6: Waiting
+605dcdf58e46: Waiting
+4e108a765cac: Waiting
+7b417353d040: Waiting
+f65449d4570b: Waiting
+8dfab5f77c29: Waiting
+91d5eed96c45: Waiting
+54ea64e8f1a7: Waiting
+26312832d6e7: Waiting
+7a4bb520bb3f: Verifying Checksum
+7a4bb520bb3f: Download complete
+54ea64e8f1a7: Verifying Checksum
+54ea64e8f1a7: Download complete
+cbc86f9bec2f: Verifying Checksum
+cbc86f9bec2f: Download complete
+26312832d6e7: Verifying Checksum
+26312832d6e7: Download complete
+4f4fb700ef54: Verifying Checksum
+694a77eeec82: Verifying Checksum
+694a77eeec82: Download complete
+04c9bfddfe0a: Verifying Checksum
+04c9bfddfe0a: Download complete
+ddeb8e8bb81f: Verifying Checksum
+ddeb8e8bb81f: Download complete
+80414daa6971: Download complete
+5c5ce62775ba: Verifying Checksum
+5c5ce62775ba: Download complete
+0518d3bee6c6: Download complete
+94428a06f602: Verifying Checksum
+94428a06f602: Download complete
+4e108a765cac: Verifying Checksum
+4e108a765cac: Download complete
+605dcdf58e46: Verifying Checksum
+605dcdf58e46: Download complete
+7b417353d040: Verifying Checksum
+7b417353d040: Download complete
+f65449d4570b: Verifying Checksum
+f65449d4570b: Download complete
+8dfab5f77c29: Verifying Checksum
+8dfab5f77c29: Download complete
+91d5eed96c45: Verifying Checksum
+91d5eed96c45: Download complete
+03d5798b4e28: Verifying Checksum
+03d5798b4e28: Download complete
+03d5798b4e28: Pull complete
+cbc86f9bec2f: Pull complete
+7a4bb520bb3f: Pull complete
+54ea64e8f1a7: Pull complete
+26312832d6e7: Pull complete
+4f4fb700ef54: Pull complete
+694a77eeec82: Pull complete
+ddeb8e8bb81f: Pull complete
+04c9bfddfe0a: Pull complete
+5c5ce62775ba: Pull complete
+80414daa6971: Pull complete
+94428a06f602: Pull complete
+0518d3bee6c6: Pull complete
+605dcdf58e46: Pull complete
+4e108a765cac: Pull complete
+7b417353d040: Pull complete
+f65449d4570b: Pull complete
+8dfab5f77c29: Pull complete
+91d5eed96c45: Pull complete
+Digest: sha256:c4da4c234258d444d9988fce9d034b00323724818daa4c91ca46f09aa04b46db
+Status: Downloaded newer image for ghcr.io/zaproxy/zaproxy:stable
+Using the Automation Framework
+Total of 10 URLs
+PASS: Vulnerable JS Library (Powered by Retire.js) [10003]
+PASS: In Page Banner Information Leak [10009]
+PASS: Cookie Without Secure Flag [10011]
+PASS: Re-examine Cache-control Directives [10015]
+PASS: Cross-Domain JavaScript Source File Inclusion [10017]
+PASS: Content-Type Header Missing [10019]
+PASS: Information Disclosure - Debug Error Messages [10023]
+PASS: Information Disclosure - Sensitive Information in URL [10024]
+PASS: Information Disclosure - Sensitive Information in HTTP Referrer Header [10025]
+PASS: HTTP Parameter Override [10026]
+PASS: Off-site Redirect [10028]
+PASS: Cookie Poisoning [10029]
+PASS: User Controllable Charset [10030]
+PASS: User Controllable HTML Element Attribute (Potential XSS) [10031]
+PASS: Viewstate [10032]
+PASS: Directory Browsing [10033]
+PASS: Heartbleed OpenSSL Vulnerability (Indicative) [10034]
+PASS: Strict-Transport-Security Header [10035]
+PASS: Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s) [10037]
+PASS: X-Backend-Server Header Information Leak [10039]
+PASS: Secure Pages Include Mixed Content [10040]
+PASS: HTTP to HTTPS Insecure Transition in Form Post [10041]
+PASS: HTTPS to HTTP Insecure Transition in Form Post [10042]
+PASS: User Controllable JavaScript Event (XSS) [10043]
+PASS: Big Redirect Detected (Potential Sensitive Information Leak) [10044]
+PASS: Retrieved from Cache [10050]
+PASS: X-ChromeLogger-Data (XCOLD) Header Information Leak [10052]
+PASS: Cookie without SameSite Attribute [10054]
+PASS: CSP [10055]
+PASS: X-Debug-Token Information Leak [10056]
+PASS: Username Hash Found [10057]
+PASS: X-AspNet-Version Response Header [10061]
+PASS: PII Disclosure [10062]
+PASS: Hash Disclosure [10097]
+PASS: Cross-Domain Misconfiguration [10098]
+PASS: Source Code Disclosure [10099]
+PASS: Weak Authentication Method [10105]
+PASS: Reverse Tabnabbing [10108]
+PASS: Dangerous JS Functions [10110]
+PASS: Authentication Request Identified [10111]
+PASS: Verification Request Identified [10113]
+PASS: Script Served From Malicious Domain (polyfill) [10115]
+PASS: ZAP is Out of Date [10116]
+PASS: Absence of Anti-CSRF Tokens [10202]
+PASS: Private IP Disclosure [2]
+PASS: Session ID in URL Rewrite [3]
+PASS: Script Passive Scan Rules [50001]
+PASS: Stats Passive Scan Rule [50003]
+PASS: Insecure JSF ViewState [90001]
+PASS: Java Serialization Object [90002]
+PASS: Charset Mismatch [90011]
+PASS: Application Error Disclosure [90022]
+PASS: WSDL File Detection [90030]
+PASS: Loosely Scoped Cookie [90033]
+WARN-NEW: Cookie No HttpOnly Flag [10010] x 1 
+	http://localhost:8081 (200 OK)
+WARN-NEW: Multiple X-Frame-Options Header Entries [10020] x 1 
+	http://localhost:8081 (200 OK)
+WARN-NEW: X-Content-Type-Options Header Missing [10021] x 5 
+	http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js (200 OK)
+	http://localhost:8081/build/assets/Welcome-C2vTbz31.js (200 OK)
+	http://localhost:8081/build/assets/app-Bb_eEper.css (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/favicon.png (200 OK)
+WARN-NEW: Information Disclosure - Suspicious Comments [10027] x 1 
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+WARN-NEW: Server Leaks Version Information via "Server" HTTP Response Header Field [10036] x 5 
+	http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js (200 OK)
+	http://localhost:8081/build/assets/Welcome-C2vTbz31.js (200 OK)
+	http://localhost:8081/favicon.png (200 OK)
+	http://localhost:8081/robots.txt (200 OK)
+	http://localhost:8081/sitemap.xml (404 Not Found)
+WARN-NEW: Content Security Policy (CSP) Header Not Set [10038] x 2 
+	http://localhost:8081 (200 OK)
+	http://localhost:8081/sitemap.xml (404 Not Found)
+WARN-NEW: Non-Storable Content [10049] x 7 
+	http://localhost:8081 (200 OK)
+	http://localhost:8081/sitemap.xml (404 Not Found)
+	http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js (200 OK)
+	http://localhost:8081/build/assets/Welcome-C2vTbz31.js (200 OK)
+	http://localhost:8081/build/assets/app-Bb_eEper.css (200 OK)
+WARN-NEW: Permissions Policy Header Not Set [10063] x 5 
+	http://localhost:8081 (200 OK)
+	http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js (200 OK)
+	http://localhost:8081/build/assets/Welcome-C2vTbz31.js (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/sitemap.xml (404 Not Found)
+WARN-NEW: Timestamp Disclosure - Unix [10096] x 5 
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+	http://localhost:8081/build/assets/app-BlFnSBxp.js (200 OK)
+WARN-NEW: Modern Web Application [10109] x 1 
+	http://localhost:8081 (200 OK)
+WARN-NEW: Session Management Response Identified [10112] x 1 
+	http://localhost:8081 (200 OK)
+WARN-NEW: Sub Resource Integrity Attribute Missing [90003] x 2 
+	http://localhost:8081 (200 OK)
+	http://localhost:8081 (200 OK)
+WARN-NEW: Cross-Origin-Embedder-Policy Header Missing or Invalid [90004] x 7 
+	http://localhost:8081 (200 OK)
+	http://localhost:8081 (200 OK)
+	http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js (200 OK)
+	http://localhost:8081/build/assets/Welcome-C2vTbz31.js (200 OK)
+	http://localhost:8081/build/assets/app-Bb_eEper.css (200 OK)
+FAIL-NEW: 0	FAIL-INPROG: 0	WARN-NEW: 13	WARN-INPROG: 0	INFO: 0	IGNORE: 0	PASS: 54

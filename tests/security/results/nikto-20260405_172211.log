@@ -1,0 +1,68 @@
+Unable to find image 'securecodebox/nikto:latest' locally
+latest: Pulling from securecodebox/nikto
+050382585609: Pulling fs layer
+cb9e14f894ff: Pulling fs layer
+78b911433595: Pulling fs layer
+abf8325464c1: Pulling fs layer
+2549eba3f0d0: Pulling fs layer
+35c7d841de7c: Pulling fs layer
+1e236269c397: Pulling fs layer
+ae55675ea9ab: Pulling fs layer
+0b72ccf45b44: Pulling fs layer
+68190faf2cdd: Pulling fs layer
+7edeebac7bd1: Pulling fs layer
+7fec411e7b90: Pulling fs layer
+e7ff1e84f7c7: Pulling fs layer
+35c7d841de7c: Waiting
+1e236269c397: Waiting
+ae55675ea9ab: Waiting
+0b72ccf45b44: Waiting
+68190faf2cdd: Waiting
+7edeebac7bd1: Waiting
+7fec411e7b90: Waiting
+e7ff1e84f7c7: Waiting
+abf8325464c1: Waiting
+2549eba3f0d0: Waiting
+78b911433595: Download complete
+cb9e14f894ff: Verifying Checksum
+cb9e14f894ff: Download complete
+050382585609: Download complete
+050382585609: Pull complete
+cb9e14f894ff: Pull complete
+78b911433595: Pull complete
+2549eba3f0d0: Verifying Checksum
+2549eba3f0d0: Download complete
+abf8325464c1: Verifying Checksum
+abf8325464c1: Download complete
+1e236269c397: Verifying Checksum
+1e236269c397: Download complete
+ae55675ea9ab: Verifying Checksum
+ae55675ea9ab: Download complete
+68190faf2cdd: Download complete
+0b72ccf45b44: Verifying Checksum
+0b72ccf45b44: Download complete
+abf8325464c1: Pull complete
+2549eba3f0d0: Pull complete
+35c7d841de7c: Verifying Checksum
+35c7d841de7c: Download complete
+7edeebac7bd1: Download complete
+7fec411e7b90: Verifying Checksum
+7fec411e7b90: Download complete
+e7ff1e84f7c7: Download complete
+35c7d841de7c: Pull complete
+1e236269c397: Pull complete
+ae55675ea9ab: Pull complete
+0b72ccf45b44: Pull complete
+68190faf2cdd: Pull complete
+7edeebac7bd1: Pull complete
+7fec411e7b90: Pull complete
+e7ff1e84f7c7: Pull complete
+Digest: sha256:47b4ccb19741e6085d30eeba4ba749f1ce5bc2282c7ea1232fb04a21091f0eae
+Status: Downloaded newer image for securecodebox/nikto:latest
+Usage: main [options]
+    -p port                          set the port (default is 4567)
+    -o addr                          set the host (default is localhost)
+    -e env                           set the environment (default is development)
+    -s server                        specify rack server/handler (default is thin)
+    -q                               turn on quiet mode (default is off)
+    -x                               turn on the mutex lock (default is off)

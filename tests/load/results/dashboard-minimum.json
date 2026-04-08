@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-04-05T23:37:39.377Z",
+  "test": "dashboard",
+  "profile": "minimum",
+  "profileDescription": "1 CPU / 512 MB — peak 8 concurrent sessions",
+  "metrics": {
+    "login_p95": 50.9601711,
+    "dashboard_p95": 14.22828135,
+    "campaign_view_p95": 36.851001350000004,
+    "http_reqs_total": 1088,
+    "http_reqs_per_sec": 6.581963439378972,
+    "error_rate": 0,
+    "vus_max": 8
+  },
+  "thresholds_passed": true
+}

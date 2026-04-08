@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-05T23:34:50.723Z",
+  "test": "claim-api",
+  "profile": "minimum",
+  "profileDescription": "1 CPU / 512 MB app / 512 MB MySQL — peak 10 VUs",
+  "campaignId": "01knft5p1jxp1kyvag65tmc21x",
+  "metrics": {
+    "duration_p95": 4.908180800000002,
+    "duration_avg": 3.7935299545970405,
+    "duration_max": 174.663439,
+    "http_reqs_total": 4405,
+    "http_reqs_per_sec": 26.63780965860606,
+    "claims_accepted": 183,
+    "claims_rate_limited": 4222,
+    "claims_not_found": 0,
+    "claims_server_error": 0,
+    "success_rate": 1,
+    "vus_max": 10
+  },
+  "thresholds_passed": true
+}

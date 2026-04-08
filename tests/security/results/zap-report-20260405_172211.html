@@ -1,0 +1,3272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>ZAP Scanning Report</title>
+<style type="text/css">
+body {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #000;
+	font-size: 13px;
+}
+
+h1 {
+	text-align: center;
+	font-weight: bold;
+	font-size: 32px
+}
+
+h3 {
+	font-size: 16px;
+}
+
+table {
+	border: none;
+	font-size: 13px;
+}
+
+td, th {
+	padding: 3px 4px;
+	word-break: break-word;
+}
+
+th {
+	font-weight: bold;
+	background-color: #666666;
+}
+
+td {
+	background-color: #e8e8e8;
+}
+
+.spacer {
+	margin: 10px;
+}
+
+.spacer-lg {
+	margin: 40px;
+}
+
+.indent1 {
+	padding: 4px 20px;
+}
+
+.indent2 {
+	padding: 4px 40px;
+}
+
+.risk-3 {
+	background-color: red;
+	color: #FFF;
+}
+
+.risk-2 {
+	background-color: orange;
+	color: #FFF;
+}
+
+.risk-1 {
+	background-color: yellow;
+	color: #000;
+}
+
+.risk-0 {
+	background-color: blue;
+	color: #FFF;
+}
+
+.risk--1 {
+	background-color: green;
+	color: #FFF;
+}
+
+.summary {
+	width: 45%;
+}
+
+.summary th {
+	color: #FFF;
+}
+
+.summary100 {
+	width: 100%;
+}
+
+.summary80 {
+	width: 80%;
+}
+
+.tdconstrainer {
+	width: 9.1%;
+	padding: 0
+}
+
+.alerts {
+	width: 75%;
+}
+
+.alerts th {
+	color: #FFF;
+}
+
+.results {
+	width: 100%;
+}
+
+.results th {
+	text-align: left;
+}
+
+.left-header {
+	display: inline-block;
+}
+
+.pass {
+	background: green;
+	color: white
+}
+
+.pass::before {
+	content: '\2714';
+	color: white
+}
+
+.fail {
+	background: red;
+	color: white
+}
+
+.fail::before {
+	content: '\2716';
+	color: white
+}
+
+.alert-3b::before {
+	content: '\2691';
+	color: red
+}
+
+.alert-2b::before {
+	content: '\2691 ';
+	color: orange
+}
+
+.alert-1b::before {
+	content: '\2691';
+	color: yellow
+}
+
+.alert-0b::before {
+	content: '\2691';
+	color: blue
+}
+
+.alert-3a::after {
+	content: '\2691';
+	color: red
+}
+
+.alert-2a::after {
+	content: '\2691 ';
+	color: orange
+}
+
+.alert-1a::after {
+	content: '\2691';
+	color: yellow
+}
+
+.alert-0a::after {
+	content: '\2691';
+	color: blue
+}
+
+.lm2 {
+	margin-left: 2em;
+}
+
+.smallnote {
+	font-size: 0.75em
+}
+
+.alwayswhite {
+	color: white
+}
+</style>
+</head>
+<body>
+	<h1>
+		<!-- The ZAP by Checkmark Logo -->
+		<img
+			src="data:image/png;base64,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"
+			alt="" />
+		ZAP Scanning Report
+	</h1>
+	<p />
+	
+
+	<h2>
+		
+		Site: http://localhost:8081
+		
+	</h2>
+
+	<h3>
+		Generated on Mon, 6 Apr 2026 00:31:00
+	</h3>
+
+	<h3>
+		ZAP Version: 2.17.0
+	</h3>
+
+	<h4>
+		ZAP by <a href="https://checkmarx.com/">Checkmarx</a>
+	</h4>
+
+	
+		<h3 class="left-header">Summary of Alerts</h3>
+		<table class="summary">
+			<tr>
+				<th width="45%"
+					height="24">Risk Level</th>
+				<th width="55%"
+					align="center">Number of Alerts</th>
+			</tr>
+			<tr>
+				<td class="risk-3">
+					<div>High</div>
+				</td>
+				<td align="center">
+					<div>0</div>
+				</td>
+			</tr>
+			<tr>
+				<td class="risk-2">
+					<div>Medium</div>
+				</td>
+				<td align="center">
+					<div>3</div>
+				</td>
+			</tr>
+			<tr>
+				<td class="risk-1">
+					<div>Low</div>
+				</td>
+				<td align="center">
+					<div>8</div>
+				</td>
+			</tr>
+			<tr>
+				<td class="risk-0">
+					<div>Informational</div>
+				</td>
+				<td align="center">
+					<div>5</div>
+				</td>
+			</tr>
+			<tr>
+				<td class="risk--1">
+					<div>				False Positives:</div>
+				</td>
+				<td align="center">
+					<div>0</div>
+				</td>
+			</tr>
+		</table>
+		<div class="spacer-lg"></div>
+	
+	
+	
+		<h3 class="left-header">Insights</h3>
+		<table class="summary100">
+			<tr>
+				<th height="24">Level</th>
+				<th>Reason</th>
+				<th>Site</th>
+				<th>Description</th>
+				<th>Statistic</th>
+			</tr>
+			
+				<tr>
+				<td class="risk-1">
+					<div>Low</div>
+				</td>
+				<td>
+					<div>Warning</div>
+				</td>
+				<td>
+					<div></div>
+				</td>
+				<td>
+					<div>ZAP warnings logged - see the zap.log file for details</div>
+				</td>
+				<td align="center">
+					<div>2   </div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of responses with status code 2xx</div>
+				</td>
+				<td align="center">
+					<div>88 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of responses with status code 4xx</div>
+				</td>
+				<td align="center">
+					<div>11 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with content type application/javascript</div>
+				</td>
+				<td align="center">
+					<div>42 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with content type image/png</div>
+				</td>
+				<td align="center">
+					<div>14 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with content type text/css</div>
+				</td>
+				<td align="center">
+					<div>14 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with content type text/html</div>
+				</td>
+				<td align="center">
+					<div>14 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with content type text/plain</div>
+				</td>
+				<td align="center">
+					<div>14 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Percentage of endpoints with method GET</div>
+				</td>
+				<td align="center">
+					<div>100 %</div>
+				</td>
+				</tr>
+			
+				<tr>
+				<td class="risk-0">
+					<div>Info</div>
+				</td>
+				<td>
+					<div>Informational</div>
+				</td>
+				<td>
+					<div>http://localhost:8081</div>
+				</td>
+				<td>
+					<div>Count of total endpoints</div>
+				</td>
+				<td align="center">
+					<div>7   </div>
+				</td>
+				</tr>
+			
+		</table>
+		<div class="spacer-lg"></div>
+	
+
+	
+		
+			<h3>Summary of Sequences</h3>
+			<p class="smallnote">For each step: result (Pass/Fail) - risk (of highest alert(s) for the step, if any).</p>
+
+			
+				</table>
+			
+		
+	</th:block>
+
+	
+		<h3>Alerts</h3>
+		<table class="alerts">
+			<tr>
+				<th width="60%" height="24">Name</th>
+				<th width="20%"
+					align="center">Risk Level</th>
+				<th width="20%"
+					align="center">Number of Instances</th>
+			</tr>
+			<tr>
+				<td><a href="#10038">Content Security Policy (CSP) Header Not Set</a></td>
+				<td align="center" class="risk-2">Medium</td>
+				
+				
+				<td align="center">2</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10020">Multiple X-Frame-Options Header Entries</a></td>
+				<td align="center" class="risk-2">Medium</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#90003">Sub Resource Integrity Attribute Missing</a></td>
+				<td align="center" class="risk-2">Medium</td>
+				
+				
+				<td align="center">2</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10010">Cookie No HttpOnly Flag</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#90004">Cross-Origin-Embedder-Policy Header Missing or Invalid</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#90004">Cross-Origin-Opener-Policy Header Missing or Invalid</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#90004">Cross-Origin-Resource-Policy Header Missing or Invalid</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				<td align="center">Systemic</td>
+				
+				
+			</tr>
+			<tr>
+				<td><a href="#10063">Permissions Policy Header Not Set</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				
+				<td align="center">5</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10036">Server Leaks Version Information via &quot;Server&quot; HTTP Response Header Field</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				<td align="center">Systemic</td>
+				
+				
+			</tr>
+			<tr>
+				<td><a href="#10096">Timestamp Disclosure - Unix</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				<td align="center">Systemic</td>
+				
+				
+			</tr>
+			<tr>
+				<td><a href="#10021">X-Content-Type-Options Header Missing</a></td>
+				<td align="center" class="risk-1">Low</td>
+				
+				
+				<td align="center">5</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10027">Information Disclosure - Suspicious Comments</a></td>
+				<td align="center" class="risk-0">Informational</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10109">Modern Web Application</a></td>
+				<td align="center" class="risk-0">Informational</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10049">Non-Storable Content</a></td>
+				<td align="center" class="risk-0">Informational</td>
+				
+				
+				<td align="center">2</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10112">Session Management Response Identified</a></td>
+				<td align="center" class="risk-0">Informational</td>
+				
+				
+				<td align="center">1</td>
+				
+			</tr>
+			<tr>
+				<td><a href="#10049">Storable and Cacheable Content</a></td>
+				<td align="center" class="risk-0">Informational</td>
+				
+				<td align="center">Systemic</td>
+				
+				
+			</tr>
+		</table>
+		<div class="spacer-lg"></div>
+	
+
+	
+		<h3>Alert Detail</h3>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-2"><a
+						id="10038"></a>
+						<div>Medium</div></th>
+					<th class="risk-2">Content Security Policy (CSP) Header Not Set</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft to site defacement or distribution of malware. CSP provides a set of standard HTTP headers that allow website owners to declare approved sources of content that browsers should be allowed to load on that page — covered types are JavaScript, CSS, HTML frames, fonts, images and embeddable objects such as Java applets, ActiveX, audio and video files.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/sitemap.xml">http://localhost:8081/sitemap.xml</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/sitemap.xml</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">2</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that your web server, application server, load balancer, etc. is configured to set the Content-Security-Policy header.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP">https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP</a>
+							<br />
+						
+							<a href="https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html">https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html</a>
+							<br />
+						
+							<a href="https://www.w3.org/TR/CSP/">https://www.w3.org/TR/CSP/</a>
+							<br />
+						
+							<a href="https://w3c.github.io/webappsec-csp/">https://w3c.github.io/webappsec-csp/</a>
+							<br />
+						
+							<a href="https://web.dev/articles/csp">https://web.dev/articles/csp</a>
+							<br />
+						
+							<a href="https://caniuse.com/#feat=contentsecuritypolicy">https://caniuse.com/#feat=contentsecuritypolicy</a>
+							<br />
+						
+							<a href="https://content-security-policy.com/">https://content-security-policy.com/</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">15</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10038/">10038</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-2"><a
+						id="10020"></a>
+						<div>Medium</div></th>
+					<th class="risk-2">Multiple X-Frame-Options Header Entries</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>X-Frame-Options (XFO) headers were found, a response with multiple XFO header entries may not be predictably treated by all user-agents.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-frame-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure only a single X-Frame-Options header is present in the response.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://datatracker.ietf.org/doc/html/rfc7034">https://datatracker.ietf.org/doc/html/rfc7034</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/1021.html">1021</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">15</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10020/">10020</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-2"><a
+						id="90003"></a>
+						<div>Medium</div></th>
+					<th class="risk-2">Sub Resource Integrity Attribute Missing</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The integrity attribute is missing on a script or link tag served by an external server. The integrity tag prevents an attacker who have gained access to this server from injecting a malicious content.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">&lt;link href=&quot;https://fonts.bunny.net/css?family=figtree:400,500,600&amp;display=swap&quot; rel=&quot;stylesheet&quot; /&gt;</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">&lt;link href=&quot;https://fonts.bunny.net/css?family=varela:400&amp;display=swap&quot; rel=&quot;stylesheet&quot; /&gt;</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">2</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Provide a valid integrity attribute to the tag.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity">https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/345.html">345</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">15</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/90003/">90003</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="10010"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Cookie No HttpOnly Flag</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>A cookie has been set without the HttpOnly flag, which means that the cookie can be accessed by JavaScript. If a malicious script can be run on this page then the cookie will be accessible and can be transmitted to another site. If this is a session cookie then session hijacking may be possible.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">XSRF-TOKEN</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">Set-Cookie: XSRF-TOKEN</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that the HttpOnly flag is set for all cookies.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://owasp.org/www-community/HttpOnly">https://owasp.org/www-community/HttpOnly</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/1004.html">1004</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10010/">10010</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="90004"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Cross-Origin-Embedder-Policy Header Missing or Invalid</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>Cross-Origin-Embedder-Policy header is a response header that prevents a document from loading any cross-origin resources that don&#39;t explicitly grant the document permission (using CORP or CORS).</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Embedder-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that the application/web server sets the Cross-Origin-Embedder-Policy header appropriately, and that it sets the Cross-Origin-Embedder-Policy header to &#39;require-corp&#39; for documents.</div>
+							<br />
+						
+							<div>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Embedder-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-embedder-policy).</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">14</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/90004/">90004</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="90004"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Cross-Origin-Opener-Policy Header Missing or Invalid</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>Cross-Origin-Opener-Policy header is a response header that allows a site to control if others included documents share the same browsing context. Sharing the same browsing context with untrusted documents might lead to data leak.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Opener-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that the application/web server sets the Cross-Origin-Opener-Policy header appropriately, and that it sets the Cross-Origin-Opener-Policy header to &#39;same-origin&#39; for documents.</div>
+							<br />
+						
+							<div>&#39;same-origin-allow-popups&#39; is considered as less secured and should be avoided.</div>
+							<br />
+						
+							<div>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Opener-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-opener-policy).</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">14</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/90004/">90004</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="90004"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Cross-Origin-Resource-Policy Header Missing or Invalid</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Resource-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/Welcome-C2vTbz31.js">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Resource-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-Bb_eEper.css">http://localhost:8081/build/assets/app-Bb_eEper.css</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-Bb_eEper.css</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Resource-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/favicon.png">http://localhost:8081/favicon.png</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/favicon.png</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Resource-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/robots.txt">http://localhost:8081/robots.txt</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/robots.txt</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">Cross-Origin-Resource-Policy</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					<td width="80%">Systemic</td>
+					
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that the application/web server sets the Cross-Origin-Resource-Policy header appropriately, and that it sets the Cross-Origin-Resource-Policy header to &#39;same-origin&#39; for all web pages.</div>
+							<br />
+						
+							<div>&#39;same-site&#39; is considered as less secured and should be avoided.</div>
+							<br />
+						
+							<div>If resources must be shared, set the header to &#39;cross-origin&#39;.</div>
+							<br />
+						
+							<div>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Resource-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-resource-policy).</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">14</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/90004/">90004</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="10063"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Permissions Policy Header Not Set</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>Permissions Policy Header is an added layer of security that helps to restrict from unauthorized access or usage of browser/client features by web resources. This policy ensures the user privacy by limiting or specifying the features of the browsers can be used by the web resources. Permissions Policy provides a set of standard HTTP headers that allow website owners to limit which features of browsers can be used by the page such as camera, microphone, location, full screen etc.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/Welcome-C2vTbz31.js">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/sitemap.xml">http://localhost:8081/sitemap.xml</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/sitemap.xml</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">5</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that your web server, application server, load balancer, etc. is configured to set the Permissions-Policy header.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy">https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy</a>
+							<br />
+						
+							<a href="https://developer.chrome.com/blog/feature-policy/">https://developer.chrome.com/blog/feature-policy/</a>
+							<br />
+						
+							<a href="https://scotthelme.co.uk/a-new-security-header-feature-policy/">https://scotthelme.co.uk/a-new-security-header-feature-policy/</a>
+							<br />
+						
+							<a href="https://w3c.github.io/webappsec-feature-policy/">https://w3c.github.io/webappsec-feature-policy/</a>
+							<br />
+						
+							<a href="https://www.smashingmagazine.com/2018/12/feature-policy/">https://www.smashingmagazine.com/2018/12/feature-policy/</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">15</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10063/">10063</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="10036"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Server Leaks Version Information via &quot;Server&quot; HTTP Response Header Field</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The web/application server is leaking version information via the &quot;Server&quot; HTTP response header. Access to such information may facilitate attackers identifying other vulnerabilities your web/application server is subject to.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">nginx/1.28.3</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/Welcome-C2vTbz31.js">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">nginx/1.28.3</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/favicon.png">http://localhost:8081/favicon.png</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/favicon.png</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">nginx/1.28.3</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/robots.txt">http://localhost:8081/robots.txt</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/robots.txt</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">nginx/1.28.3</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/sitemap.xml">http://localhost:8081/sitemap.xml</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/sitemap.xml</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">nginx/1.28.3</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					<td width="80%">Systemic</td>
+					
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that your web server, application server, load balancer, etc. is configured to suppress the &quot;Server&quot; header or provide generic details.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://httpd.apache.org/docs/current/mod/core.html#servertokens">https://httpd.apache.org/docs/current/mod/core.html#servertokens</a>
+							<br />
+						
+							<a href="https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff648552(v=pandp.10)">https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff648552(v=pandp.10)</a>
+							<br />
+						
+							<a href="https://www.troyhunt.com/shhh-dont-let-your-response-headers/">https://www.troyhunt.com/shhh-dont-let-your-response-headers/</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/497.html">497</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10036/">10036</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="10096"></a>
+						<div>Low</div></th>
+					<th class="risk-1">Timestamp Disclosure - Unix</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>A timestamp was disclosed by the application/web server. - Unix</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">1508970993</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>1508970993, which evaluates to: 2017-10-25 22:36:33.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">1634760805</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>1634760805, which evaluates to: 2021-10-20 20:13:25.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">1797285236</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>1797285236, which evaluates to: 2026-12-14 21:53:56.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">1899447441</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>1899447441, which evaluates to: 2030-03-11 08:17:21.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">2036477234</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>2036477234, which evaluates to: 2034-07-14 08:07:14.</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					<td width="80%">Systemic</td>
+					
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Manually confirm that the timestamp data is not sensitive, and that the data cannot be aggregated to disclose exploitable patterns.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://cwe.mitre.org/data/definitions/200.html">https://cwe.mitre.org/data/definitions/200.html</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/497.html">497</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10096/">10096</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-1"><a
+						id="10021"></a>
+						<div>Low</div></th>
+					<th class="risk-1">X-Content-Type-Options Header Missing</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The Anti-MIME-Sniffing header X-Content-Type-Options was not set to &#39;nosniff&#39;. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-content-type-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</div>
+							<br />
+						
+							<div>At &quot;High&quot; threshold this scan rule will not alert on client or server error responses.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/Welcome-C2vTbz31.js">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-content-type-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</div>
+							<br />
+						
+							<div>At &quot;High&quot; threshold this scan rule will not alert on client or server error responses.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-Bb_eEper.css">http://localhost:8081/build/assets/app-Bb_eEper.css</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-Bb_eEper.css</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-content-type-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</div>
+							<br />
+						
+							<div>At &quot;High&quot; threshold this scan rule will not alert on client or server error responses.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-content-type-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</div>
+							<br />
+						
+							<div>At &quot;High&quot; threshold this scan rule will not alert on client or server error responses.</div>
+							
+						</td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/favicon.png">http://localhost:8081/favicon.png</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/favicon.png</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">x-content-type-options</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</div>
+							<br />
+						
+							<div>At &quot;High&quot; threshold this scan rule will not alert on client or server error responses.</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">5</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to &#39;nosniff&#39; for all web pages.</div>
+							<br />
+						
+							<div>If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)">https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)</a>
+							<br />
+						
+							<a href="https://owasp.org/www-community/Security_Headers">https://owasp.org/www-community/Security_Headers</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/693.html">693</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">15</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10021/">10021</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-0"><a
+						id="10027"></a>
+						<div>Informational</div></th>
+					<th class="risk-0">Information Disclosure - Suspicious Comments</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The response appears to contain suspicious comments which may help an attacker.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-BlFnSBxp.js">http://localhost:8081/build/assets/app-BlFnSBxp.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-BlFnSBxp.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">* The buffer module from node.js, for the br</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>The following pattern was used: \bFROM\b and was detected in likely comment: &quot;/*!</div>
+							<br />
+						
+							<div> * The buffer module from node.js, for the browser.</div>
+							<br />
+						
+							<div> *</div>
+							<br />
+						
+							<div> * @author   Feross Aboukhadijeh &lt;https://feross.org&gt;</div>
+							<br />
+						
+							<div> * @license  MI&quot;, see evidence field for the suspicious comment/snippet.</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Remove all comments that return information that may help an attacker and fix any underlying problems they refer to.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/615.html">615</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10027/">10027</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-0"><a
+						id="10109"></a>
+						<div>Informational</div></th>
+					<th class="risk-0">Modern Web Application</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The application appears to be a modern web application. If you need to explore it automatically then the Ajax Spider may well be more effective than the standard one.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">&lt;script type=&quot;text/javascript&quot;&gt;const Ziggy={&quot;url&quot;:&quot;http:\/\/localhost:8081&quot;,&quot;port&quot;:8081,&quot;defaults&quot;:{},&quot;routes&quot;:{&quot;dusk.login&quot;:{&quot;uri&quot;:&quot;_dusk\/login\/{userId}\/{guard?}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;userId&quot;,&quot;guard&quot;]},&quot;dusk.logout&quot;:{&quot;uri&quot;:&quot;_dusk\/logout\/{guard?}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;guard&quot;]},&quot;dusk.user&quot;:{&quot;uri&quot;:&quot;_dusk\/user\/{guard?}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;guard&quot;]},&quot;sanctum.csrf-cookie&quot;:{&quot;uri&quot;:&quot;sanctum\/csrf-cookie&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;ignition.healthCheck&quot;:{&quot;uri&quot;:&quot;_ignition\/health-check&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;ignition.executeSolution&quot;:{&quot;uri&quot;:&quot;_ignition\/execute-solution&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;ignition.updateConfig&quot;:{&quot;uri&quot;:&quot;_ignition\/update-config&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;claim.v1&quot;:{&quot;uri&quot;:&quot;api\/claim\/v1\/{campaign}&quot;,&quot;methods&quot;:[&quot;POST&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;dashboard&quot;:{&quot;uri&quot;:&quot;dashboard&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;terms&quot;:{&quot;uri&quot;:&quot;terms&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;privacy&quot;:{&quot;uri&quot;:&quot;privacy&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;faqs&quot;:{&quot;uri&quot;:&quot;faqs&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;profile.edit&quot;:{&quot;uri&quot;:&quot;profile&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;profile.update&quot;:{&quot;uri&quot;:&quot;profile&quot;,&quot;methods&quot;:[&quot;PATCH&quot;]},&quot;profile.destroy&quot;:{&quot;uri&quot;:&quot;profile&quot;,&quot;methods&quot;:[&quot;DELETE&quot;]},&quot;profile.tokens.create&quot;:{&quot;uri&quot;:&quot;profile\/tokens&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;profile.tokens.revoke&quot;:{&quot;uri&quot;:&quot;profile\/tokens\/{token}&quot;,&quot;methods&quot;:[&quot;DELETE&quot;],&quot;parameters&quot;:[&quot;token&quot;]},&quot;campaigns.index&quot;:{&quot;uri&quot;:&quot;campaigns&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;campaigns.create&quot;:{&quot;uri&quot;:&quot;campaigns\/create&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;campaigns.store&quot;:{&quot;uri&quot;:&quot;campaigns&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;campaigns.show&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;campaigns.edit&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}\/edit&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;campaigns.update&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}&quot;,&quot;methods&quot;:[&quot;PUT&quot;,&quot;PATCH&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;campaigns.destroy&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}&quot;,&quot;methods&quot;:[&quot;DELETE&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;campaigns.check-claims&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}\/check-claims&quot;,&quot;methods&quot;:[&quot;POST&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;campaigns.refund&quot;:{&quot;uri&quot;:&quot;campaigns\/{campaign}\/refund&quot;,&quot;methods&quot;:[&quot;POST&quot;],&quot;parameters&quot;:[&quot;campaign&quot;],&quot;bindings&quot;:{&quot;campaign&quot;:&quot;id&quot;}},&quot;codes.index&quot;:{&quot;uri&quot;:&quot;codes&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;codes.create&quot;:{&quot;uri&quot;:&quot;codes\/create&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;codes.store&quot;:{&quot;uri&quot;:&quot;codes&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;codes.show&quot;:{&quot;uri&quot;:&quot;codes\/{code}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;code&quot;]},&quot;codes.edit&quot;:{&quot;uri&quot;:&quot;codes\/{code}\/edit&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;code&quot;]},&quot;codes.update&quot;:{&quot;uri&quot;:&quot;codes\/{code}&quot;,&quot;methods&quot;:[&quot;PUT&quot;,&quot;PATCH&quot;],&quot;parameters&quot;:[&quot;code&quot;]},&quot;codes.destroy&quot;:{&quot;uri&quot;:&quot;codes\/{code}&quot;,&quot;methods&quot;:[&quot;DELETE&quot;],&quot;parameters&quot;:[&quot;code&quot;]},&quot;register&quot;:{&quot;uri&quot;:&quot;register&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;login&quot;:{&quot;uri&quot;:&quot;login&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;password.request&quot;:{&quot;uri&quot;:&quot;forgot-password&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;password.email&quot;:{&quot;uri&quot;:&quot;forgot-password&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;password.reset&quot;:{&quot;uri&quot;:&quot;reset-password\/{token}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;token&quot;]},&quot;password.store&quot;:{&quot;uri&quot;:&quot;reset-password&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;verification.notice&quot;:{&quot;uri&quot;:&quot;verify-email&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;verification.verify&quot;:{&quot;uri&quot;:&quot;verify-email\/{id}\/{hash}&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;],&quot;parameters&quot;:[&quot;id&quot;,&quot;hash&quot;]},&quot;verification.send&quot;:{&quot;uri&quot;:&quot;email\/verification-notification&quot;,&quot;methods&quot;:[&quot;POST&quot;]},&quot;password.confirm&quot;:{&quot;uri&quot;:&quot;confirm-password&quot;,&quot;methods&quot;:[&quot;GET&quot;,&quot;HEAD&quot;]},&quot;password.update&quot;:{&quot;uri&quot;:&quot;password&quot;,&quot;methods&quot;:[&quot;PUT&quot;]},&quot;logout&quot;:{&quot;uri&quot;:&quot;logout&quot;,&quot;methods&quot;:[&quot;POST&quot;]}}};!function(t,e){&quot;object&quot;==typeof exports&amp;&amp;&quot;undefined&quot;!=typeof module?module.exports=e():&quot;function&quot;==typeof define&amp;&amp;define.amd?define(e):(t||self).route=e()}(this,function(){function t(t,e){for(var n=0;n&lt;e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,&quot;value&quot;in r&amp;&amp;(r.writable=!0),Object.defineProperty(t,u(r.key),r)}}function e(e,n,r){return n&amp;&amp;t(e.prototype,n),r&amp;&amp;t(e,r),Object.defineProperty(e,&quot;prototype&quot;,{writable:!1}),e}function n(){return n=Object.assign?Object.assign.bind():function(t){for(var e=1;e&lt;arguments.length;e++){var n=arguments[e];for(var r in n)({}).hasOwnProperty.call(n,r)&amp;&amp;(t[r]=n[r])}return t},n.apply(null,arguments)}function r(t){return r=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)},r(t)}function o(){try{var t=!Boolean.prototype.valueOf.call(Reflect.construct(Boolean,[],function(){}))}catch(t){}return(o=function(){return!!t})()}function i(t,e){return i=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t},i(t,e)}function u(t){var e=function(t){if(&quot;object&quot;!=typeof t||!t)return t;var e=t[Symbol.toPrimitive];if(void 0!==e){var n=e.call(t,&quot;string&quot;);if(&quot;object&quot;!=typeof n)return n;throw new TypeError(&quot;@@toPrimitive must return a primitive value.&quot;)}return String(t)}(t);return&quot;symbol&quot;==typeof e?e:e+&quot;&quot;}function f(t){var e=&quot;function&quot;==typeof Map?new Map:void 0;return f=function(t){if(null===t||!function(t){try{return-1!==Function.toString.call(t).indexOf(&quot;[native code]&quot;)}catch(e){return&quot;function&quot;==typeof t}}(t))return t;if(&quot;function&quot;!=typeof t)throw new TypeError(&quot;Super expression must either be null or a function&quot;);if(void 0!==e){if(e.has(t))return e.get(t);e.set(t,n)}function n(){return function(t,e,n){if(o())return Reflect.construct.apply(null,arguments);var r=[null];r.push.apply(r,e);var u=new(t.bind.apply(t,r));return n&amp;&amp;i(u,n.prototype),u}(t,arguments,r(this).constructor)}return n.prototype=Object.create(t.prototype,{constructor:{value:n,enumerable:!1,writable:!0,configurable:!0}}),i(n,t)},f(t)}const c=String.prototype.replace,l=/%20/g,a={RFC1738:function(t){return c.call(t,l,&quot;+&quot;)},RFC3986:function(t){return String(t)}};var s=&quot;RFC3986&quot;;const p=Object.prototype.hasOwnProperty,y=Array.isArray,d=new WeakMap;var b=function(t,e){return d.set(t,e),t};function h(t){return d.has(t)}var v=function(t){return d.get(t)},m=function(t,e){d.set(t,e)};const g=function(){const t=[];for(let e=0;e&lt;256;++e)t.push(&quot;%&quot;+((e&lt;16?&quot;0&quot;:&quot;&quot;)+e.toString(16)).toUpperCase());return t}(),w=function(t,e){const n=e&amp;&amp;e.plainObjects?Object.create(null):{};for(let e=0;e&lt;t.length;++e)void 0!==t[e]&amp;&amp;(n[e]=t[e]);return n},j=function t(e,n,r){if(!n)return e;if(&quot;object&quot;!=typeof n){if(y(e))e.push(n);else{if(!e||&quot;object&quot;!=typeof e)return[e,n];if(h(e)){var o=v(e)+1;e[o]=n,m(e,o)}else(r&amp;&amp;(r.plainObjects||r.allowPrototypes)||!p.call(Object.prototype,n))&amp;&amp;(e[n]=!0)}return e}if(!e||&quot;object&quot;!=typeof e){if(h(n)){for(var i=Object.keys(n),u=r&amp;&amp;r.plainObjects?{__proto__:null,0:e}:{0:e},f=0;f&lt;i.length;f++)u[parseInt(i[f],10)+1]=n[i[f]];return b(u,v(n)+1)}return[e].concat(n)}let c=e;return y(e)&amp;&amp;!y(n)&amp;&amp;(c=w(e,r)),y(e)&amp;&amp;y(n)?(n.forEach(function(n,o){if(p.call(e,o)){const i=e[o];i&amp;&amp;&quot;object&quot;==typeof i&amp;&amp;n&amp;&amp;&quot;object&quot;==typeof n?e[o]=t(i,n,r):e.push(n)}else e[o]=n}),e):Object.keys(n).reduce(function(e,o){const i=n[o];return e[o]=p.call(e,o)?t(e[o],i,r):i,e},c)},O=1024,E=function(t,e,n,r){if(h(t)){var o=v(t)+1;return t[o]=e,m(t,o),t}var i=[].concat(t,e);return i.length&gt;n?b(w(i,{plainObjects:r}),i.length-1):i},T=function(t,e){if(y(t)){const n=[];for(let r=0;r&lt;t.length;r+=1)n.push(e(t[r]));return n}return e(t)},R=Object.prototype.hasOwnProperty,k={brackets:function(t){return t+&quot;[]&quot;},comma:&quot;comma&quot;,indices:function(t,e){return t+&quot;[&quot;+e+&quot;]&quot;},repeat:function(t){return t}},S=Array.isArray,I=Array.prototype.push,A=function(t,e){I.apply(t,S(e)?e:[e])},D=Date.prototype.toISOString,$={addQueryPrefix:!1,allowDots:!1,allowEmptyArrays:!1,arrayFormat:&quot;indices&quot;,charset:&quot;utf-8&quot;,charsetSentinel:!1,delimiter:&quot;&amp;&quot;,encode:!0,encodeDotInKeys:!1,encoder:function(t,e,n,r,o){if(0===t.length)return t;let i=t;if(&quot;symbol&quot;==typeof t?i=Symbol.prototype.toString.call(t):&quot;string&quot;!=typeof t&amp;&amp;(i=String(t)),&quot;iso-8859-1&quot;===n)return escape(i).replace(/%u[0-9a-f]{4}/gi,function(t){return&quot;%26%23&quot;+parseInt(t.slice(2),16)+&quot;%3B&quot;});let u=&quot;&quot;;for(let t=0;t&lt;i.length;t+=O){const e=i.length&gt;=O?i.slice(t,t+O):i,n=[];for(let t=0;t&lt;e.length;++t){let r=e.charCodeAt(t);45===r||46===r||95===r||126===r||r&gt;=48&amp;&amp;r&lt;=57||r&gt;=65&amp;&amp;r&lt;=90||r&gt;=97&amp;&amp;r&lt;=122||&quot;RFC1738&quot;===o&amp;&amp;(40===r||41===r)?n[n.length]=e.charAt(t):r&lt;128?n[n.length]=g[r]:r&lt;2048?n[n.length]=g[192|r&gt;&gt;6]+g[128|63&amp;r]:r&lt;55296||r&gt;=57344?n[n.length]=g[224|r&gt;&gt;12]+g[128|r&gt;&gt;6&amp;63]+g[128|63&amp;r]:(t+=1,r=65536+((1023&amp;r)&lt;&lt;10|1023&amp;e.charCodeAt(t)),n[n.length]=g[240|r&gt;&gt;18]+g[128|r&gt;&gt;12&amp;63]+g[128|r&gt;&gt;6&amp;63]+g[128|63&amp;r])}u+=n.join(&quot;&quot;)}return u},encodeValuesOnly:!1,format:s,formatter:a[s],indices:!1,serializeDate:function(t){return D.call(t)},skipNulls:!1,strictNullHandling:!1},N={},_=function(t,e,n,r,o,i,u,f,c,l,a,s,p,y,d,b,h,v){let m=t,g=v,w=0,j=!1;for(;void 0!==(g=g.get(N))&amp;&amp;!j;){const e=g.get(t);if(w+=1,void 0!==e){if(e===w)throw new RangeError(&quot;Cyclic object value&quot;);j=!0}void 0===g.get(N)&amp;&amp;(w=0)}if(&quot;function&quot;==typeof l?m=l(e,m):m instanceof Date?m=p(m):&quot;comma&quot;===n&amp;&amp;S(m)&amp;&amp;(m=T(m,function(t){return t instanceof Date?p(t):t})),null===m){if(i)return c&amp;&amp;!b?c(e,$.encoder,h,&quot;key&quot;,y):e;m=&quot;&quot;}if(&quot;string&quot;==typeof(O=m)||&quot;number&quot;==typeof O||&quot;boolean&quot;==typeof O||&quot;symbol&quot;==typeof O||&quot;bigint&quot;==typeof O||function(t){return!(!t||&quot;object&quot;!=typeof t||!(t.constructor&amp;&amp;t.constructor.isBuffer&amp;&amp;t.constructor.isBuffer(t)))}(m))return c?[d(b?e:c(e,$.encoder,h,&quot;key&quot;,y))+&quot;=&quot;+d(c(m,$.encoder,h,&quot;value&quot;,y))]:[d(e)+&quot;=&quot;+d(String(m))];var O;const E=[];if(void 0===m)return E;let R;if(&quot;comma&quot;===n&amp;&amp;S(m))b&amp;&amp;c&amp;&amp;(m=T(m,c)),R=[{value:m.length&gt;0?m.join(&quot;,&quot;)||null:void 0}];else if(S(l))R=l;else{const t=Object.keys(m);R=a?t.sort(a):t}const k=f?e.replace(/\./g,&quot;%2E&quot;):e,I=r&amp;&amp;S(m)&amp;&amp;1===m.length?k+&quot;[]&quot;:k;if(o&amp;&amp;S(m)&amp;&amp;0===m.length)return I+&quot;[]&quot;;for(let e=0;e&lt;R.length;++e){const g=R[e],j=&quot;object&quot;==typeof g&amp;&amp;void 0!==g.value?g.value:m[g];if(u&amp;&amp;null===j)continue;const O=s&amp;&amp;f?g.replace(/\./g,&quot;%2E&quot;):g,T=S(m)?&quot;function&quot;==typeof n?n(I,O):I:I+(s?&quot;.&quot;+O:&quot;[&quot;+O+&quot;]&quot;);v.set(t,w);const k=new WeakMap;k.set(N,v),A(E,_(j,T,n,r,o,i,u,f,&quot;comma&quot;===n&amp;&amp;b&amp;&amp;S(m)?null:c,l,a,s,p,y,d,b,h,k))}return E},x=Object.prototype.hasOwnProperty,C=Array.isArray,P={allowDots:!1,allowEmptyArrays:!1,allowPrototypes:!1,allowSparse:!1,arrayLimit:20,charset:&quot;utf-8&quot;,charsetSentinel:!1,comma:!1,decodeDotInKeys:!1,decoder:function(t,e,n){const r=t.replace(/\+/g,&quot; &quot;);if(&quot;iso-8859-1&quot;===n)return r.replace(/%[0-9a-f]{2}/gi,unescape);try{return decodeURIComponent(r)}catch(t){return r}},delimiter:&quot;&amp;&quot;,depth:5,duplicates:&quot;combine&quot;,ignoreQueryPrefix:!1,interpretNumericEntities:!1,parameterLimit:1e3,parseArrays:!0,plainObjects:!1,strictNullHandling:!1},F=function(t){return t.replace(/&amp;#(\d+);/g,function(t,e){return String.fromCharCode(parseInt(e,10))})},U=function(t,e){return t&amp;&amp;&quot;string&quot;==typeof t&amp;&amp;e.comma&amp;&amp;t.indexOf(&quot;,&quot;)&gt;-1?t.split(&quot;,&quot;):t},q=function(t,e,n,r){if(!t)return;const o=n.allowDots?t.replace(/\.([^.[]+)/g,&quot;[$1]&quot;):t,i=/(\[[^[\]]*])/g;let u=n.depth&gt;0&amp;&amp;/(\[[^[\]]*])/.exec(o);const f=u?o.slice(0,u.index):o,c=[];if(f){if(!n.plainObjects&amp;&amp;x.call(Object.prototype,f)&amp;&amp;!n.allowPrototypes)return;c.push(f)}let l=0;for(;n.depth&gt;0&amp;&amp;null!==(u=i.exec(o))&amp;&amp;l&lt;n.depth;){if(l+=1,!n.plainObjects&amp;&amp;x.call(Object.prototype,u[1].slice(1,-1))&amp;&amp;!n.allowPrototypes)return;c.push(u[1])}return u&amp;&amp;c.push(&quot;[&quot;+o.slice(u.index)+&quot;]&quot;),function(t,e,n,r){let o=r?e:U(e,n);for(let e=t.length-1;e&gt;=0;--e){let r;const i=t[e];if(&quot;[]&quot;===i&amp;&amp;n.parseArrays)r=h(o)?o:n.allowEmptyArrays&amp;&amp;(&quot;&quot;===o||n.strictNullHandling&amp;&amp;null===o)?[]:E([],o,n.arrayLimit,n.plainObjects);else{r=n.plainObjects?Object.create(null):{};const t=&quot;[&quot;===i.charAt(0)&amp;&amp;&quot;]&quot;===i.charAt(i.length-1)?i.slice(1,-1):i,e=n.decodeDotInKeys?t.replace(/%2E/g,&quot;.&quot;):t,u=parseInt(e,10);n.parseArrays||&quot;&quot;!==e?!isNaN(u)&amp;&amp;i!==e&amp;&amp;String(u)===e&amp;&amp;u&gt;=0&amp;&amp;n.parseArrays&amp;&amp;u&lt;=n.arrayLimit?(r=[],r[u]=o):&quot;__proto__&quot;!==e&amp;&amp;(r[e]=o):r={0:o}}o=r}return o}(c,e,n,r)};function K(t,e){const n=function(t){if(!t)return P;if(void 0!==t.allowEmptyArrays&amp;&amp;&quot;boolean&quot;!=typeof t.allowEmptyArrays)throw new TypeError(&quot;`allowEmptyArrays` option can only be `true` or `false`, when provided&quot;);if(void 0!==t.decodeDotInKeys&amp;&amp;&quot;boolean&quot;!=typeof t.decodeDotInKeys)throw new TypeError(&quot;`decodeDotInKeys` option can only be `true` or `false`, when provided&quot;);if(null!=t.decoder&amp;&amp;&quot;function&quot;!=typeof t.decoder)throw new TypeError(&quot;Decoder has to be a function.&quot;);if(void 0!==t.charset&amp;&amp;&quot;utf-8&quot;!==t.charset&amp;&amp;&quot;iso-8859-1&quot;!==t.charset)throw new TypeError(&quot;The charset option must be either utf-8, iso-8859-1, or undefined&quot;);const e=void 0===t.charset?P.charset:t.charset,n=void 0===t.duplicates?P.duplicates:t.duplicates;if(&quot;combine&quot;!==n&amp;&amp;&quot;first&quot;!==n&amp;&amp;&quot;last&quot;!==n)throw new TypeError(&quot;The duplicates option must be either combine, first, or last&quot;);return{allowDots:void 0===t.allowDots?!0===t.decodeDotInKeys||P.allowDots:!!t.allowDots,allowEmptyArrays:&quot;boolean&quot;==typeof t.allowEmptyArrays?!!t.allowEmptyArrays:P.allowEmptyArrays,allowPrototypes:&quot;boolean&quot;==typeof t.allowPrototypes?t.allowPrototypes:P.allowPrototypes,allowSparse:&quot;boolean&quot;==typeof t.allowSparse?t.allowSparse:P.allowSparse,arrayLimit:&quot;number&quot;==typeof t.arrayLimit?t.arrayLimit:P.arrayLimit,charset:e,charsetSentinel:&quot;boolean&quot;==typeof t.charsetSentinel?t.charsetSentinel:P.charsetSentinel,comma:&quot;boolean&quot;==typeof t.comma?t.comma:P.comma,decodeDotInKeys:&quot;boolean&quot;==typeof t.decodeDotInKeys?t.decodeDotInKeys:P.decodeDotInKeys,decoder:&quot;function&quot;==typeof t.decoder?t.decoder:P.decoder,delimiter:&quot;string&quot;==typeof t.delimiter||(r=t.delimiter,&quot;[object RegExp]&quot;===Object.prototype.toString.call(r))?t.delimiter:P.delimiter,depth:&quot;number&quot;==typeof t.depth||!1===t.depth?+t.depth:P.depth,duplicates:n,ignoreQueryPrefix:!0===t.ignoreQueryPrefix,interpretNumericEntities:&quot;boolean&quot;==typeof t.interpretNumericEntities?t.interpretNumericEntities:P.interpretNumericEntities,parameterLimit:&quot;number&quot;==typeof t.parameterLimit?t.parameterLimit:P.parameterLimit,parseArrays:!1!==t.parseArrays,plainObjects:&quot;boolean&quot;==typeof t.plainObjects?t.plainObjects:P.plainObjects,strictNullHandling:&quot;boolean&quot;==typeof t.strictNullHandling?t.strictNullHandling:P.strictNullHandling};var r}(e);if(&quot;&quot;===t||null==t)return n.plainObjects?Object.create(null):{};const r=&quot;string&quot;==typeof t?function(t,e){const n={__proto__:null},r=(e.ignoreQueryPrefix?t.replace(/^\?/,&quot;&quot;):t).split(e.delimiter,Infinity===e.parameterLimit?void 0:e.parameterLimit);let o,i=-1,u=e.charset;if(e.charsetSentinel)for(o=0;o&lt;r.length;++o)0===r[o].indexOf(&quot;utf8=&quot;)&amp;&amp;(&quot;utf8=%E2%9C%93&quot;===r[o]?u=&quot;utf-8&quot;:&quot;utf8=%26%2310003%3B&quot;===r[o]&amp;&amp;(u=&quot;iso-8859-1&quot;),i=o,o=r.length);for(o=0;o&lt;r.length;++o){if(o===i)continue;const t=r[o],f=t.indexOf(&quot;]=&quot;),c=-1===f?t.indexOf(&quot;=&quot;):f+1;let l,a;-1===c?(l=e.decoder(t,P.decoder,u,&quot;key&quot;),a=e.strictNullHandling?null:&quot;&quot;):(l=e.decoder(t.slice(0,c),P.decoder,u,&quot;key&quot;),a=T(U(t.slice(c+1),e),function(t){return e.decoder(t,P.decoder,u,&quot;value&quot;)})),a&amp;&amp;e.interpretNumericEntities&amp;&amp;&quot;iso-8859-1&quot;===u&amp;&amp;(a=F(a)),t.indexOf(&quot;[]=&quot;)&gt;-1&amp;&amp;(a=C(a)?[a]:a);const s=x.call(n,l);s&amp;&amp;&quot;combine&quot;===e.duplicates?n[l]=E(n[l],a,e.arrayLimit,e.plainObjects):s&amp;&amp;&quot;last&quot;!==e.duplicates||(n[l]=a)}return n}(t,n):t;let o=n.plainObjects?Object.create(null):{};const i=Object.keys(r);for(let e=0;e&lt;i.length;++e){const u=i[e],f=q(u,r[u],n,&quot;string&quot;==typeof t);o=j(o,f,n)}return!0===n.allowSparse?o:function(t){const e=[{obj:{o:t},prop:&quot;o&quot;}],n=[];for(let t=0;t&lt;e.length;++t){const r=e[t],o=r.obj[r.prop],i=Object.keys(o);for(let t=0;t&lt;i.length;++t){const r=i[t],u=o[r];&quot;object&quot;==typeof u&amp;&amp;null!==u&amp;&amp;-1===n.indexOf(u)&amp;&amp;(e.push({obj:o,prop:r}),n.push(u))}}return function(t){for(;t.length&gt;1;){const e=t.pop(),n=e.obj[e.prop];if(y(n)){const t=[];for(let e=0;e&lt;n.length;++e)void 0!==n[e]&amp;&amp;t.push(n[e]);e.obj[e.prop]=t}}}(e),t}(o)}var Z=/*#__PURE__*/function(){function t(t,e,n){var r,o;this.name=t,this.definition=e,this.bindings=null!=(r=e.bindings)?r:{},this.wheres=null!=(o=e.wheres)?o:{},this.config=n}var n=t.prototype;return n.matchesUrl=function(t){var e,n=this;if(!this.definition.methods.includes(&quot;GET&quot;))return!1;var r=this.template.replace(/[.*+$()[\]]/g,&quot;\\$&amp;&quot;).replace(/(\/?){([^}?]*)(\??)}/g,function(t,e,r,o){var i,u=&quot;(?&lt;&quot;+r+&quot;&gt;&quot;+((null==(i=n.wheres[r])?void 0:i.replace(/(^\^)|(\$$)/g,&quot;&quot;))||&quot;[^/?]+&quot;)+&quot;)&quot;;return o?&quot;(&quot;+e+u+&quot;)?&quot;:&quot;&quot;+e+u}).replace(/^\w+:\/\//,&quot;&quot;),o=t.replace(/^\w+:\/\//,&quot;&quot;).split(&quot;?&quot;),i=o[0],u=o[1],f=null!=(e=new RegExp(&quot;^&quot;+r+&quot;/?$&quot;).exec(i))?e:new RegExp(&quot;^&quot;+r+&quot;/?$&quot;).exec(decodeURI(i));if(f){for(var c in f.groups)f.groups[c]=&quot;string&quot;==typeof f.groups[c]?decodeURIComponent(f.groups[c]):f.groups[c];return{params:f.groups,query:K(u)}}return!1},n.compile=function(t){var e=this;return this.parameterSegments.length?this.template.replace(/{([^}?]+)(\??)}/g,function(n,r,o){var i,u;if(!o&amp;&amp;[null,void 0].includes(t[r]))throw new Error(&quot;Ziggy error: &#39;&quot;+r+&quot;&#39; parameter is required for route &#39;&quot;+e.name+&quot;&#39;.&quot;);if(e.wheres[r]&amp;&amp;!new RegExp(&quot;^&quot;+(o?&quot;(&quot;+e.wheres[r]+&quot;)?&quot;:e.wheres[r])+&quot;$&quot;).test(null!=(u=t[r])?u:&quot;&quot;))throw new Error(&quot;Ziggy error: &#39;&quot;+r+&quot;&#39; parameter &#39;&quot;+t[r]+&quot;&#39; does not match required format &#39;&quot;+e.wheres[r]+&quot;&#39; for route &#39;&quot;+e.name+&quot;&#39;.&quot;);return encodeURI(null!=(i=t[r])?i:&quot;&quot;).replace(/%7C/g,&quot;|&quot;).replace(/%25/g,&quot;%&quot;).replace(/\$/g,&quot;%24&quot;)}).replace(this.config.absolute?/(\.[^/]+?)(\/\/)/:/(^)(\/\/)/,&quot;$1/&quot;).replace(/\/+$/,&quot;&quot;):this.template},e(t,[{key:&quot;template&quot;,get:function(){var t=(this.origin+&quot;/&quot;+this.definition.uri).replace(/\/+$/,&quot;&quot;);return&quot;&quot;===t?&quot;/&quot;:t}},{key:&quot;origin&quot;,get:function(){return this.config.absolute?this.definition.domain?&quot;&quot;+this.config.url.match(/^\w+:\/\//)[0]+this.definition.domain+(this.config.port?&quot;:&quot;+this.config.port:&quot;&quot;):this.config.url:&quot;&quot;}},{key:&quot;parameterSegments&quot;,get:function(){var t,e;return null!=(t=null==(e=this.template.match(/{[^}?]+\??}/g))?void 0:e.map(function(t){return{name:t.replace(/{|\??}/g,&quot;&quot;),required:!/\?}$/.test(t)}}))?t:[]}}])}(),B=/*#__PURE__*/function(t){function r(e,r,o,i){var u;if(void 0===o&amp;&amp;(o=!0),(u=t.call(this)||this).t=null!=i?i:&quot;undefined&quot;!=typeof Ziggy?Ziggy:null==globalThis?void 0:globalThis.Ziggy,!u.t&amp;&amp;&quot;undefined&quot;!=typeof document&amp;&amp;document.getElementById(&quot;ziggy-routes-json&quot;)&amp;&amp;(globalThis.Ziggy=JSON.parse(document.getElementById(&quot;ziggy-routes-json&quot;).textContent),u.t=globalThis.Ziggy),u.t=n({},u.t,{absolute:o}),e){if(!u.t.routes[e])throw new Error(&quot;Ziggy error: route &#39;&quot;+e+&quot;&#39; is not in the route list.&quot;);u.i=new Z(e,u.t.routes[e],u.t),u.u=u.l(r)}return u}var o,u;u=t,(o=r).prototype=Object.create(u.prototype),o.prototype.constructor=o,i(o,u);var f=r.prototype;return f.toString=function(){var t=this,e=Object.keys(this.u).filter(function(e){return!t.i.parameterSegments.some(function(t){return t.name===e})}).filter(function(t){return&quot;_query&quot;!==t}).reduce(function(e,r){var o;return n({},e,((o={})[r]=t.u[r],o))},{});return this.i.compile(this.u)+function(t,e){let n=t;const r=function(t){if(!t)return $;if(void 0!==t.allowEmptyArrays&amp;&amp;&quot;boolean&quot;!=typeof t.allowEmptyArrays)throw new TypeError(&quot;`allowEmptyArrays` option can only be `true` or `false`, when provided&quot;);if(void 0!==t.encodeDotInKeys&amp;&amp;&quot;boolean&quot;!=typeof t.encodeDotInKeys)throw new TypeError(&quot;`encodeDotInKeys` option can only be `true` or `false`, when provided&quot;);if(null!=t.encoder&amp;&amp;&quot;function&quot;!=typeof t.encoder)throw new TypeError(&quot;Encoder has to be a function.&quot;);const e=t.charset||$.charset;if(void 0!==t.charset&amp;&amp;&quot;utf-8&quot;!==t.charset&amp;&amp;&quot;iso-8859-1&quot;!==t.charset)throw new TypeError(&quot;The charset option must be either utf-8, iso-8859-1, or undefined&quot;);let n=s;if(void 0!==t.format){if(!R.call(a,t.format))throw new TypeError(&quot;Unknown format option provided.&quot;);n=t.format}const r=a[n];let o,i=$.filter;if((&quot;function&quot;==typeof t.filter||S(t.filter))&amp;&amp;(i=t.filter),o=t.arrayFormat in k?t.arrayFormat:&quot;indices&quot;in t?t.indices?&quot;indices&quot;:&quot;repeat&quot;:$.arrayFormat,&quot;commaRoundTrip&quot;in t&amp;&amp;&quot;boolean&quot;!=typeof t.commaRoundTrip)throw new TypeError(&quot;`commaRoundTrip` must be a boolean, or absent&quot;);return{addQueryPrefix:&quot;boolean&quot;==typeof t.addQueryPrefix?t.addQueryPrefix:$.addQueryPrefix,allowDots:void 0===t.allowDots?!0===t.encodeDotInKeys||$.allowDots:!!t.allowDots,allowEmptyArrays:&quot;boolean&quot;==typeof t.allowEmptyArrays?!!t.allowEmptyArrays:$.allowEmptyArrays,arrayFormat:o,charset:e,charsetSentinel:&quot;boolean&quot;==typeof t.charsetSentinel?t.charsetSentinel:$.charsetSentinel,commaRoundTrip:t.commaRoundTrip,delimiter:void 0===t.delimiter?$.delimiter:t.delimiter,encode:&quot;boolean&quot;==typeof t.encode?t.encode:$.encode,encodeDotInKeys:&quot;boolean&quot;==typeof t.encodeDotInKeys?t.encodeDotInKeys:$.encodeDotInKeys,encoder:&quot;function&quot;==typeof t.encoder?t.encoder:$.encoder,encodeValuesOnly:&quot;boolean&quot;==typeof t.encodeValuesOnly?t.encodeValuesOnly:$.encodeValuesOnly,filter:i,format:n,formatter:r,serializeDate:&quot;function&quot;==typeof t.serializeDate?t.serializeDate:$.serializeDate,skipNulls:&quot;boolean&quot;==typeof t.skipNulls?t.skipNulls:$.skipNulls,sort:&quot;function&quot;==typeof t.sort?t.sort:null,strictNullHandling:&quot;boolean&quot;==typeof t.strictNullHandling?t.strictNullHandling:$.strictNullHandling}}(e);let o,i;&quot;function&quot;==typeof r.filter?(i=r.filter,n=i(&quot;&quot;,n)):S(r.filter)&amp;&amp;(i=r.filter,o=i);const u=[];if(&quot;object&quot;!=typeof n||null===n)return&quot;&quot;;const f=k[r.arrayFormat],c=&quot;comma&quot;===f&amp;&amp;r.commaRoundTrip;o||(o=Object.keys(n)),r.sort&amp;&amp;o.sort(r.sort);const l=new WeakMap;for(let t=0;t&lt;o.length;++t){const e=o[t];r.skipNulls&amp;&amp;null===n[e]||A(u,_(n[e],e,f,c,r.allowEmptyArrays,r.strictNullHandling,r.skipNulls,r.encodeDotInKeys,r.encode?r.encoder:null,r.filter,r.sort,r.allowDots,r.serializeDate,r.format,r.formatter,r.encodeValuesOnly,r.charset,l))}const p=u.join(r.delimiter);let y=!0===r.addQueryPrefix?&quot;?&quot;:&quot;&quot;;return r.charsetSentinel&amp;&amp;(y+=&quot;iso-8859-1&quot;===r.charset?&quot;utf8=%26%2310003%3B&amp;&quot;:&quot;utf8=%E2%9C%93&amp;&quot;),p.length&gt;0?y+p:&quot;&quot;}(n({},e,this.u._query),{addQueryPrefix:!0,arrayFormat:&quot;indices&quot;,encodeValuesOnly:!0,skipNulls:!0,encoder:function(t,e){return&quot;boolean&quot;==typeof t?Number(t):e(t)}})},f.p=function(t){var e=this;t?this.t.absolute&amp;&amp;t.startsWith(&quot;/&quot;)&amp;&amp;(t=this.h().host+t):t=this.v();var r={},o=Object.entries(this.t.routes).find(function(n){return r=new Z(n[0],n[1],e.t).matchesUrl(t)})||[void 0,void 0];return n({name:o[0]},r,{route:o[1]})},f.v=function(){var t=this.h(),e=t.pathname,n=t.search;return(this.t.absolute?t.host+e:e.replace(this.t.url.replace(/^\w*:\/\/[^/]+/,&quot;&quot;),&quot;&quot;).replace(/^\/+/,&quot;/&quot;))+n},f.current=function(t,e){var r=this.p(),o=r.name,i=r.params,u=r.query,f=r.route;if(!t)return o;var c=new RegExp(&quot;^&quot;+t.replace(/\./g,&quot;\\.&quot;).replace(/\*/g,&quot;.*&quot;)+&quot;$&quot;).test(o);if([null,void 0].includes(e)||!c)return c;var l=new Z(o,f,this.t);e=this.l(e,l);var a=n({},i,u);if(Object.values(e).every(function(t){return!t})&amp;&amp;!Object.values(a).some(function(t){return void 0!==t}))return!0;var s=function(t,e){return Object.entries(t).every(function(t){var n=t[0],r=t[1];return Array.isArray(r)&amp;&amp;Array.isArray(e[n])?r.every(function(t){return e[n].includes(t)||e[n].includes(decodeURIComponent(t))}):&quot;object&quot;==typeof r&amp;&amp;&quot;object&quot;==typeof e[n]&amp;&amp;null!==r&amp;&amp;null!==e[n]?s(r,e[n]):e[n]==r||e[n]==decodeURIComponent(r)})};return s(e,a)},f.h=function(){var t,e,n,r,o,i,u=&quot;undefined&quot;!=typeof window?window.location:{},f=u.host,c=u.pathname,l=u.search;return{host:null!=(t=null==(e=this.t.location)?void 0:e.host)?t:void 0===f?&quot;&quot;:f,pathname:null!=(n=null==(r=this.t.location)?void 0:r.pathname)?n:void 0===c?&quot;&quot;:c,search:null!=(o=null==(i=this.t.location)?void 0:i.search)?o:void 0===l?&quot;&quot;:l}},f.has=function(t){return this.t.routes.hasOwnProperty(t)},f.l=function(t,e){var r=this;void 0===t&amp;&amp;(t={}),void 0===e&amp;&amp;(e=this.i),null!=t||(t={}),t=[&quot;string&quot;,&quot;number&quot;].includes(typeof t)?[t]:t;var o=e.parameterSegments.filter(function(t){return!r.t.defaults[t.name]});if(Array.isArray(t))t=t.reduce(function(t,e,r){var i,u;return n({},t,o[r]?((i={})[o[r].name]=e,i):&quot;object&quot;==typeof e?e:((u={})[e]=&quot;&quot;,u))},{});else if(1===o.length&amp;&amp;!t[o[0].name]&amp;&amp;(t.hasOwnProperty(Object.values(e.bindings)[0])||t.hasOwnProperty(&quot;id&quot;))){var i;(i={})[o[0].name]=t,t=i}return n({},this.m(e),this.j(t,e))},f.m=function(t){var e=this;return t.parameterSegments.filter(function(t){return e.t.defaults[t.name]}).reduce(function(t,r,o){var i,u=r.name;return n({},t,((i={})[u]=e.t.defaults[u],i))},{})},f.j=function(t,e){var r=e.bindings,o=e.parameterSegments;return Object.entries(t).reduce(function(t,e){var i,u,f=e[0],c=e[1];if(!c||&quot;object&quot;!=typeof c||Array.isArray(c)||!o.some(function(t){return t.name===f}))return n({},t,((u={})[f]=c,u));if(!c.hasOwnProperty(r[f])){if(!c.hasOwnProperty(&quot;id&quot;))throw new Error(&quot;Ziggy error: object passed as &#39;&quot;+f+&quot;&#39; parameter is missing route model binding key &#39;&quot;+r[f]+&quot;&#39;.&quot;);r[f]=&quot;id&quot;}return n({},t,((i={})[f]=c[r[f]],i))},{})},f.valueOf=function(){return this.toString()},e(r,[{key:&quot;params&quot;,get:function(){var t=this.p();return n({},t.params,t.query)}},{key:&quot;routeParams&quot;,get:function(){return this.p().params}},{key:&quot;queryParams&quot;,get:function(){return this.p().query}}])}(/*#__PURE__*/f(String));return function(t,e,n,r){var o=new B(t,e,n,r);return t?o.toString():o}});
+&lt;/script&gt;</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>No links have been found while there are scripts, which is an indication that this is a modern web application.</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>This is an informational alert and so no changes are required.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10109/">10109</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-0"><a
+						id="10049"></a>
+						<div>Informational</div></th>
+					<th class="risk-0">Non-Storable Content</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">private</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/sitemap.xml">http://localhost:8081/sitemap.xml</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/sitemap.xml</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">private</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">2</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>The content may be marked as storable by ensuring that the following conditions are satisfied:</div>
+							<br />
+						
+							<div>The request method must be understood by the cache and defined as being cacheable (&quot;GET&quot;, &quot;HEAD&quot;, and &quot;POST&quot; are currently defined as cacheable)</div>
+							<br />
+						
+							<div>The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood)</div>
+							<br />
+						
+							<div>The &quot;no-store&quot; cache directive must not appear in the request or response header fields</div>
+							<br />
+						
+							<div>For caching by &quot;shared&quot; caches such as &quot;proxy&quot; caches, the &quot;private&quot; response directive must not appear in the response</div>
+							<br />
+						
+							<div>For caching by &quot;shared&quot; caches such as &quot;proxy&quot; caches, the &quot;Authorization&quot; header field must not appear in the request, unless the response explicitly allows it (using one of the &quot;must-revalidate&quot;, &quot;public&quot;, or &quot;s-maxage&quot; Cache-Control response directives)</div>
+							<br />
+						
+							<div>In addition to the conditions above, at least one of the following conditions must also be satisfied by the response:</div>
+							<br />
+						
+							<div>It must contain an &quot;Expires&quot; header field</div>
+							<br />
+						
+							<div>It must contain a &quot;max-age&quot; response directive</div>
+							<br />
+						
+							<div>For &quot;shared&quot; caches such as &quot;proxy&quot; caches, it must contain a &quot;s-maxage&quot; response directive</div>
+							<br />
+						
+							<div>It must contain a &quot;Cache Control Extension&quot; that allows it to be cached</div>
+							<br />
+						
+							<div>It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://datatracker.ietf.org/doc/html/rfc7234">https://datatracker.ietf.org/doc/html/rfc7234</a>
+							<br />
+						
+							<a href="https://datatracker.ietf.org/doc/html/rfc7231">https://datatracker.ietf.org/doc/html/rfc7231</a>
+							<br />
+						
+							<a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html">https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/524.html">524</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10049/">10049</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-0"><a
+						id="10112"></a>
+						<div>Informational</div></th>
+					<th class="risk-0">Session Management Response Identified</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The given response has been identified as containing a session management token. The &#39;Other Info&#39; field contains a set of header tokens that can be used in the Header Based Session Management Method. If the request is in a context which has a Session Management Method set to &quot;Auto-Detect&quot; then this rule will change the session management to use the tokens identified.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081">http://localhost:8081</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%">onboardninja_session</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">onboardninja_session</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>cookie:onboardninja_session</div>
+							<br />
+						
+							<div>cookie:XSRF-TOKEN</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					
+					<td width="80%">1</td>
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>This is an informational alert rather than a vulnerability and so there is nothing to fix.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://www.zaproxy.org/docs/desktop/addons/authentication-helper/session-mgmt-id/">https://www.zaproxy.org/docs/desktop/addons/authentication-helper/session-mgmt-id/</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%"></td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10112/">10112</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+			<table class="results">
+				<tr height="24">
+					<th width="20%" class="risk-0"><a
+						id="10049"></a>
+						<div>Informational</div></th>
+					<th class="risk-0">Storable and Cacheable Content</th>
+				</tr>
+				<tr>
+					<td width="20%">Description</td>
+					<td width="80%">
+							<div>The response contents are storable by caching components such as proxy servers, and may be retrieved directly from the cache, rather than from the origin server by the caching servers, in response to similar requests from other users. If the response data is sensitive, personal or user-specific, this may result in sensitive information being leaked. In some cases, this may even result in a user gaining complete control of the session of another user, depending on the configuration of the caching components in use in their environment. This is primarily an issue where &quot;shared&quot; caching servers such as &quot;proxy&quot; caches are configured on the local network. This configuration is typically found in corporate or educational environments, for instance.</div>
+							
+						</td>
+				</tr>
+				<TR vAlign="top">
+					<TD colspan="2"></TD>
+				</TR>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/LogoSvg-Ci2gI_2b.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">max-age=31536000</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/Welcome-C2vTbz31.js">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/Welcome-C2vTbz31.js</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">max-age=31536000</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/build/assets/app-Bb_eEper.css">http://localhost:8081/build/assets/app-Bb_eEper.css</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/build/assets/app-Bb_eEper.css</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">max-age=31536000</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/favicon.png">http://localhost:8081/favicon.png</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/favicon.png</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%">max-age=2592000</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%"></td>
+					</tr>
+				
+					<tr>
+						<td width="20%"
+							class="indent1">URL</td>
+						<td width="80%"><a href="http://localhost:8081/robots.txt">http://localhost:8081/robots.txt</a></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Node Name</td>
+						<td width="80%">http://localhost:8081/robots.txt</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Method</td>
+						<td width="80%">GET</td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Parameter</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Attack</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Evidence</td>
+						<td width="80%"></td>
+					</tr>
+					<tr>
+						<td width="20%"
+							class="indent2">Other Info</td>
+						<td width="80%">
+							<div>In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234.</div>
+							
+						</td>
+					</tr>
+				
+				<tr>
+					<td width="20%">Instances</td>
+					
+					<td width="80%">Systemic</td>
+					
+					
+				</tr>
+				<tr>
+					<td width="20%">Solution</td>
+					<td width="80%">
+							<div>Validate that the response does not contain sensitive, personal or user-specific information. If it does, consider the use of the following HTTP response headers, to limit, or prevent the content being stored and retrieved from the cache by another user:</div>
+							<br />
+						
+							<div>Cache-Control: no-cache, no-store, must-revalidate, private</div>
+							<br />
+						
+							<div>Pragma: no-cache</div>
+							<br />
+						
+							<div>Expires: 0</div>
+							<br />
+						
+							<div>This configuration directs both HTTP 1.0 and HTTP 1.1 compliant caching servers to not store the response, and to not retrieve the response (without validation) from the cache, in response to a similar request.</div>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">Reference</td>
+					<td width="80%">
+							<a href="https://datatracker.ietf.org/doc/html/rfc7234">https://datatracker.ietf.org/doc/html/rfc7234</a>
+							<br />
+						
+							<a href="https://datatracker.ietf.org/doc/html/rfc7231">https://datatracker.ietf.org/doc/html/rfc7231</a>
+							<br />
+						
+							<a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html">https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</a>
+							
+						</td>
+				</tr>
+				<tr>
+					<td width="20%">CWE Id</td>
+					<td width="80%"><a
+						href="https://cwe.mitre.org/data/definitions/524.html">524</a></td>
+				</tr>
+				<tr>
+					<td width="20%">WASC Id</td>
+					<td width="80%">13</td>
+				</tr>
+				<tr>
+					<td width="20%">Plugin Id</td>
+					<td width="80%"><a
+						href="https://www.zaproxy.org/docs/alerts/10049/">10049</a></td>
+				</tr>
+			</table>
+			<div class="spacer"></div>
+		
+	
+
+	
+		
+			<h3>Sequence Details</h3>
+			<sup>With the associated active scan results.</sup>
+
+			
+
+			<div class="spacer-lg"></div>
+
+		
+	
+
+</body>
+</html>
+
