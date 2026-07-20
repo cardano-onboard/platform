@@ -1,0 +1,122 @@
+# Onboard.Ninja — Production / DIY self-hosted stack
+# Usage:
+#   cp .env.docker .env          # fill in your secrets
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   open http://localhost:8080
+#
+# All published host ports are configurable from .env — see the PORTS section
+# there. Set *_BIND=127.0.0.1 to keep a service off the network entirely.
+
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Application (PHP-FPM + nginx in one container via supervisord)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: "${COMPOSE_PROJECT_NAME:-onboard}_app"
+    restart: unless-stopped
+    ports:
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      # Overrides from .env so the app always reaches sibling containers by
+      # their service names on the internal network. Host-side port changes
+      # (DB_HOST_PORT / REDIS_HOST_PORT) do not affect these.
+      DB_HOST: mysql
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      # Persist uploaded files and generated content across restarts
+      - app_storage:/var/www/html/storage/app
+      - app_logs:/var/www/html/storage/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - onboard
+
+  # ---------------------------------------------------------------------------
+  # MySQL 8
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: "${COMPOSE_PROJECT_NAME:-onboard}_mysql"
+    restart: unless-stopped
+    ports:
+      # Bound to loopback by default — the app reaches MySQL over the compose
+      # network, so this mapping only exists for local clients (e.g. TablePlus).
+      # Set DB_BIND=0.0.0.0 only if you knowingly want remote DB access.
+      - "${DB_BIND:-127.0.0.1}:${DB_HOST_PORT:-3306}:3306"
+    environment:
+      # No ":-default" fallbacks on the passwords. Compose substitutes those on
+      # EMPTY as well as unset, so a blank DB_PASSWORD in .env would initialise
+      # MySQL with the fallback while the app container received the blank
+      # value verbatim via env_file — a permanent "Access denied for user
+      # 'onboard'" that no amount of password-matching can fix. Empty here
+      # fails loudly at init instead. Use ./quickstart.sh to populate these.
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is not set — run ./quickstart.sh}"
+      MYSQL_DATABASE: "${DB_DATABASE:-onboard}"
+      MYSQL_USER: "${DB_USERNAME:-onboard}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD is not set — run ./quickstart.sh}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1",
+             "-u", "root", "--password=${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - onboard
+
+  # ---------------------------------------------------------------------------
+  # Redis (cache + queue driver)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: "${COMPOSE_PROJECT_NAME:-onboard}_redis"
+    restart: unless-stopped
+    ports:
+      # Loopback by default; see the DB_BIND note above.
+      - "${REDIS_BIND:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - onboard
+
+# =============================================================================
+# Named volumes
+# =============================================================================
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_storage:
+    driver: local
+  app_logs:
+    driver: local
+
+# =============================================================================
+# Network
+# =============================================================================
+networks:
+  onboard:
+    driver: bridge

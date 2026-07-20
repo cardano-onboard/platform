@@ -1,0 +1,49 @@
+# Build context exclusions.
+#
+# The Dockerfile uses `COPY . .` in three stages. Without this file that
+# includes the developer's .env — baking live secrets into the image layers,
+# where they survive even if the file is deleted in a later step.
+
+# Secrets — never in an image. Runtime config arrives via env_file/environment.
+.env
+.env.*
+!.env.example
+!.env.docker
+
+# Installed by the build stages themselves; copying them in is both slow and
+# a source of host/container architecture mismatches.
+node_modules
+vendor
+public/build
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Local state that should never influence a build
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+.phpunit.result.cache
+.phpunit.cache
+
+# IDE and tooling artifacts
+.idea
+.vscode
+_ide_helper.php
+.phpstorm.meta.php
+
+# Assistant / internal-only files (also stripped by the publish script)
+.claude
+CLAUDE.md
+.scratch
+
+# Docs site build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Other compose files — the build only needs the Dockerfile
+docker-compose*.yml
+compose.sail.yaml
