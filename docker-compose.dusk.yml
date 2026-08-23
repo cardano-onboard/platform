@@ -1,0 +1,48 @@
+# Docker Compose overlay for running Laravel Dusk E2E tests.
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.dusk.yml up -d
+# Then:  php artisan dusk --env=dusk.docker
+#
+# Or run everything in Docker:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.dusk.yml run --rm app php artisan dusk
+
+services:
+  # Override ports to avoid conflicts with local services
+  # Override app env to match the MySQL credentials that Docker Compose
+  # resolves from .env (which may have stale Sail values)
+  app:
+    ports: !override
+      - "8081:8080"
+    environment:
+      APP_KEY: "base64:lI6gNEZbi2sItf0uOYVt5Ybi5L2N711OmNIkQNcIZtA="
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: "${DB_DATABASE:-onboard}"
+      DB_USERNAME: "${DB_USERNAME:-onboard}"
+      DB_PASSWORD: "${DB_PASSWORD:-secret}"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
+      TRANSACTION_BACKEND: "null"
+
+  mysql:
+    ports: !override
+      - "3307:3306"
+
+  chrome:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+      - "7900:7900"
+    environment:
+      - SE_NODE_MAX_SESSIONS=3
+      - SE_VNC_NO_PASSWORD=1
+    shm_size: 2g
+    networks:
+      - onboard
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 5s
+      retries: 10

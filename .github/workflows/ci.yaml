@@ -1,0 +1,224 @@
+name: CI
+
+# Merge gate. Runs the full suite (style, unit/feature, frontend, and the Dusk
+# browser + CSP gate) on every pull request targeting a deploy branch. Mark the
+# lint / test / dusk / docker jobs as required status checks in branch protection
+# so a PR can only merge once they are green. The deploy workflows (staging.yaml,
+# production.yaml) intentionally do NOT re-run these — they trust this gate.
+on:
+  pull_request:
+    branches: [staging, main]
+
+jobs:
+  lint:
+    name: Code Style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          tools: composer:v2
+          coverage: none
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Check Code Style
+        run: vendor/bin/pint --test
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    # Run the PHP suite against MySQL (not SQLite) so strict mode — ONLY_FULL_GROUP_BY et
+    # al., matching the RDS/Vapor production DB — is exercised in CI. SQLite silently
+    # accepts MySQL-invalid SQL (e.g. aggregate + $withCount without GROUP BY), letting
+    # prod-only 500s slip through; running the real engine catches them here.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: onboard_test
+          MYSQL_USER: onboard
+          MYSQL_PASSWORD: onboard
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          extensions: pdo_mysql
+          tools: composer:v2
+          coverage: pcov
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - name: Install NPM Dependencies
+        run: npm ci
+      - name: Build Frontend Assets
+        run: npm run build
+      - name: Run Frontend Tests
+        run: npm test
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
+      - name: Wait for MySQL
+        # The service `mysqladmin ping` health check can pass against MySQL's transient
+        # init server before the real one accepts queries. Block on an actual SELECT so
+        # the suite never races a not-yet-ready DB (which fails ~dozens of tests at once).
+        run: |
+          for i in $(seq 1 30); do
+            if mysql -h127.0.0.1 -P3306 -uonboard -ponboard -e "SELECT 1" onboard_test >/dev/null 2>&1; then
+              echo "MySQL is query-ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "MySQL did not become query-ready in time" >&2; exit 1
+      - name: Run Tests with Coverage
+        run: php artisan test -c phpunit.mysql.xml --coverage --min=50 --coverage-clover build/coverage/clover.xml
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: onboard_test
+          DB_USERNAME: onboard
+          DB_PASSWORD: onboard
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-coverage
+          path: build/coverage/
+
+  dusk:
+    name: Browser (Dusk)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: onboard_dusk
+          MYSQL_USER: onboard
+          MYSQL_PASSWORD: onboard
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+      chrome:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 9515:4444
+        options: >-
+          --shm-size=2g
+          --add-host=host.docker.internal:host-gateway
+          --health-cmd="curl -f http://localhost:4444/wd/hub/status || exit 1"
+          --health-interval=5s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          extensions: sqlite3, pdo_mysql
+          tools: composer:v2
+          coverage: none
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - name: Install NPM Dependencies
+        run: npm ci
+      - name: Build Frontend Assets
+        run: npm run build
+      - name: Prepare Dusk Environment
+        run: |
+          cp .env.dusk.ci .env
+          # Delete .env.testing so artisan serve's persistent PHP process
+          # doesn't auto-load it on subsequent requests once APP_ENV=testing
+          # gets propagated via dotenv putenv() — that file overrides DB to
+          # SQLite in-memory, breaking cross-process auth in Dusk.
+          rm -f .env.testing
+          php artisan key:generate
+          php artisan migrate --force
+      - name: Start Laravel Server
+        run: |
+          mkdir -p storage/logs
+          nohup php artisan serve --host=0.0.0.0 --port=8080 > storage/logs/serve.log 2>&1 &
+      - name: Wait for Server
+        run: |
+          for i in $(seq 1 10); do
+            curl -s http://localhost:8080 > /dev/null && break
+            sleep 2
+          done
+      - name: Probe Dusk Routes
+        run: |
+          # Create a known user, then hit /_dusk/login/{id} and /dashboard with cookie jar
+          USER_ID=$(php artisan tinker --execute='echo \App\Models\User::factory()->create()->id;' 2>/dev/null | tail -1)
+          echo "Created user id: $USER_ID"
+          echo "=== GET /_dusk/login/$USER_ID (-i: response headers) ==="
+          curl -isS -c /tmp/probe.jar http://localhost:8080/_dusk/login/$USER_ID | head -40
+          echo
+          echo "=== GET /dashboard with session cookie ==="
+          curl -isS -b /tmp/probe.jar http://localhost:8080/dashboard | head -20
+          echo
+          echo "=== Cookie jar after auth ==="
+          cat /tmp/probe.jar
+      - name: Run Dusk Tests
+        run: php artisan dusk
+        env:
+          DUSK_DRIVER_URL: http://localhost:9515
+      - name: Dump Laravel & Serve Logs
+        if: failure()
+        run: |
+          echo "===== storage/logs/laravel.log ====="
+          [ -f storage/logs/laravel.log ] && cat storage/logs/laravel.log || echo "(no laravel.log)"
+          echo "===== storage/logs/serve.log ====="
+          [ -f storage/logs/serve.log ] && cat storage/logs/serve.log || echo "(no serve.log)"
+      - name: Upload Dusk Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dusk-screenshots
+          path: tests/Browser/screenshots/
+      - name: Upload Dusk Console Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dusk-console
+          path: tests/Browser/console/
+      - name: Upload Laravel Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: laravel-logs
+          path: storage/logs/
+          if-no-files-found: ignore
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build Docker Image
+        run: docker build -t onboard-ninja:ci-test .

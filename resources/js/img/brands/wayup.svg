@@ -1,0 +1,8 @@
+<!-- WayUp mark, extracted from the site's inline SVG. The source canvas is
+     123.434x33 with the artwork occupying only x 0-35.6 / y 10.36-33, so the
+     mark is re-centred into a square avatar to match the other project logos
+     (dark tile, white mark — as WayUp's own site is dark-themed). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <rect width="40" height="40" fill="#0B0B0B"/>
+  <path d="M29.449,49.6 23.383,64.423 20.131,50.88l-5.9.771L9.851,64.617 5.476,52.729 0,53.444 6.6,71.436H12.76l4.234-12.825s1.98,8.511,3.2,12.825c2.06-.008,6.17,0,6.17,0L35.6,48.794Z" transform="translate(2.199 -40.114)" fill="#FFFFFF"/>
+</svg>
