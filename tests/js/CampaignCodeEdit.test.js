@@ -348,15 +348,15 @@ describe('CampaignShow reward editing', () => {
         await wrapper.find('[data-test="add-code"]').trigger('click');
         await settle(wrapper);
 
-        // The create dialog's field comes first in the template; the edit dialog's stays
-        // mounted behind it once it has been opened. Both have to be present before the
-        // values mean anything, and which turn that happens on depends on the machine.
-        await settleUntil(wrapper, () => fieldsLabelled(wrapper, 'Lovelace').length === 2);
+        // The cancelled edit dialog unmounts its field once its closing transition ends,
+        // which a fast machine can read before it happens and a slow one cannot. Waiting for
+        // that end state leaves one field on every machine: the create dialog's. It has to
+        // start from the create default, not from the 9 ADA typed into the edit dialog.
+        await settleUntil(wrapper, () => fieldsLabelled(wrapper, 'Lovelace').length === 1);
 
         const fields = fieldsLabelled(wrapper, 'Lovelace');
-        expect(fields).toHaveLength(2);
+        expect(fields).toHaveLength(1);
         expect(fields[0].props('modelValue')).toBe(1000000);
-        expect(fields[1].props('modelValue')).toBe(9000000);
     }, DIALOG_ROUND_TRIP_TIMEOUT);
 
     /**
