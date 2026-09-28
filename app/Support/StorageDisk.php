@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Resolves a filesystem disk name to one that is actually configured.
  *
- * A cloud disk whose credentials were never injected — no bucket attached to the
- * Laravel Cloud environment, or a self-hosted install that never filled in AWS_* —
- * surfaces deep inside Flysystem as a TypeError on a null bucket, which reaches the
+ * A cloud disk whose credentials were never injected, whether because the host never
+ * attached a bucket to the environment or because a self-hosted install never filled in
+ * AWS_*, surfaces deep inside Flysystem as a TypeError on a null bucket, which reaches the
  * user as a blank 500 with nothing pointing at the real cause. Resolving names through
  * here instead turns that into a logged, named misconfiguration and keeps the feature
  * working on the local disk.

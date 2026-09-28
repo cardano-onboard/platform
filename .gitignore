@@ -1,4 +1,5 @@
 /.phpunit.cache
+/.phpunit.mysql.sqlite.xml
 /node_modules
 /public/hot
 /public/storage

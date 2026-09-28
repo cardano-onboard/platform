@@ -44,9 +44,17 @@ return [
     | considered expired. If this value is null, personal access tokens do
     | not expire. This won't tweak the lifetime of first-party sessions.
     |
+    | Left null deliberately: expiry is per token (expires_at, stamped at the moment a
+    | token is minted) rather than one global rule applied to every token regardless of
+    | who it is for. A token minted for the Profile page still expires in 24 hours,
+    | because ProfileController::createToken() stamps that expiry itself; a token minted
+    | for a long-running integration through the api:token command carries whatever
+    | expiry it was given, including none. A global minute count here cannot tell those
+    | two callers apart.
+    |
     */
 
-    'expiration' => 1440,
+    'expiration' => null,
 
     /*
     |--------------------------------------------------------------------------

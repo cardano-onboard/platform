@@ -98,6 +98,23 @@ describe('Welcome', () => {
         expect(wrapper.text()).toContain('beta');
     });
 
+    it('keeps the theme toggle below both notices', async () => {
+        // jsdom lays nothing out, so give each notice the height of a wrapped message.
+        vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(50);
+
+        const wrapper = mountWelcome({}, {
+            beta_banner: true,
+            deployment_notice: { message: 'Moved', type: 'warning', link: null },
+        });
+        await wrapper.vm.$nextTick();
+        await wrapper.vm.$nextTick();
+
+        const toggle = wrapper.find('.mdi-weather-night').element.closest('div[style]');
+        expect(toggle.getAttribute('style')).toContain('top: 108px');
+
+        vi.restoreAllMocks();
+    });
+
     it('renders footer links', () => {
         const wrapper = mountWelcome();
         expect(wrapper.text()).toContain('Terms');
@@ -120,13 +137,11 @@ describe('Welcome — self-hosted (reduced route table)', () => {
     // reproduces that route table to catch the regression.
     const DIY_ROUTES = [
         'dashboard', 'login', 'logout',
-        'campaigns.index', 'campaigns.create', 'campaigns.store',
-        'campaigns.show', 'campaigns.edit', 'campaigns.update',
+        'campaigns.store', 'campaigns.show', 'campaigns.update',
         'campaigns.destroy', 'campaigns.check-claims', 'campaigns.refund',
         'campaigns.download-qr',
-        'codes.index', 'codes.create', 'codes.store', 'codes.show',
-        'codes.edit', 'codes.update', 'codes.destroy',
-        'known-assets.index', 'known-assets.lookup', 'known-assets.store',
+        'codes.store', 'codes.destroy',
+        'known-assets.index', 'known-assets.lookup', 'known-assets.lookup-many',
     ];
 
     afterEach(() => {
@@ -143,6 +158,18 @@ describe('Welcome — self-hosted (reduced route table)', () => {
         expect(wrapper.html()).toContain('Onboard.Ninja');
         expect(wrapper.text()).not.toContain('Terms');
         expect(wrapper.text()).not.toContain('Privacy');
+    });
+
+    it('leaves the register button out when no register route exists, whatever the prop says', () => {
+        globalThis.setAvailableRoutes(DIY_ROUTES);
+
+        // The prop and the route table are two different answers to the same question, and
+        // only the route table decides whether route('register') throws. A build that says
+        // registration is on while the route is gone has to render the page anyway.
+        const wrapper = mountWelcome({ canRegister: true });
+
+        expect(wrapper.text()).not.toContain('Register');
+        expect(wrapper.text()).toContain('Onboard.Ninja');
     });
 
     it('still shows the login button in the self-hosted build', () => {

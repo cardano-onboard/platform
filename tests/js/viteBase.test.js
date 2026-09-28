@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Guards the Vapor asset-loading fix. laravel-vite-plugin bakes `base = ASSET_URL +
-// "/build/"` at build time, and that base drives runtime dynamic-import chunk URLs.
-// On Vapor the per-deploy CloudFront ASSET_URL is unknown when CI builds the assets,
-// so an absolute "/build/" base makes Inertia SPA navigation request page chunks from
-// the app origin → 404 (the campaign details page symptom). The relative base in
-// vite.config.js makes chunks resolve via import.meta.url — relative to app.js's real
-// (CloudFront) origin. When the base is absolute, Vite emits string-concatenated chunk
+// Guards the asset-loading fix. laravel-vite-plugin bakes `base = ASSET_URL + "/build/"`
+// at build time, and that base drives runtime dynamic-import chunk URLs. A host that
+// serves assets from a per-deploy asset path settles ASSET_URL after CI has built the
+// assets, so an absolute "/build/" base makes Inertia SPA navigation request page chunks
+// from the app origin and 404 (the campaign details page symptom). The relative base in
+// vite.config.js makes chunks resolve via import.meta.url, relative to the origin app.js
+// was really loaded from. When the base is absolute, Vite emits string-concatenated chunk
 // URLs and drops import.meta.url, so its presence in the entry is the discriminator.
 //
 // Asserts the actual build output. CI builds assets before running the JS suite; when
@@ -27,7 +27,7 @@ describe('vite build asset base', () => {
         expect(
             entryJs.includes('import.meta.url'),
             'entry bundle must use import.meta.url for chunk resolution (relative base); '
-                + 'an absolute /build/ base would 404 SPA chunks on Vapor/CloudFront',
+                + 'an absolute /build/ base would 404 SPA chunks on a separate asset host',
         ).toBe(true);
     });
 });

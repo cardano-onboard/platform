@@ -49,8 +49,10 @@ Schedule::command('assets:sync-registry')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Prune cached QR export bundles past their TTL. S3 deployments can instead use a
-// native bucket lifecycle rule on the qr-exports/ prefix and disable this if desired.
+// Sweep the QR exports: delete bundles past their TTL, mark the records whose bundle is
+// gone expired so the page stops offering a download that answers 404, and delete records
+// past the retention window. S3 deployments can expire the qr-exports/ prefix with a
+// native bucket lifecycle rule instead, which is exactly the case the second pass covers.
 Schedule::command('qr:prune-exports')
     ->daily()
     ->name('prune-qr-exports')

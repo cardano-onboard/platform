@@ -6,14 +6,14 @@ import path from 'path';
 
 export default defineConfig(({ command }) => ({
     // Relative base for production builds so runtime dynamic-import chunks resolve
-    // via import.meta.url — i.e. relative to wherever app.js was loaded from. On
-    // Vapor, assets are served from a per-deploy CloudFront path (ASSET_URL) that is
-    // unknown at build time (CI builds the assets), so baking an absolute /build/ base
-    // makes Inertia SPA navigation request chunks from the app origin → 404. A relative
-    // base sidesteps that: chunks load from the same origin/path as app.js (CloudFront
-    // on Vapor, same-origin on the self-hosted image). Laravel's @vite entry tags are
-    // unaffected — the manifest keeps relative `file` paths and is prefixed with the
-    // runtime ASSET_URL. Dev keeps the plugin default so HMR works.
+    // via import.meta.url, i.e. relative to wherever app.js was loaded from. A host
+    // that serves assets from a per-deploy asset path (ASSET_URL) settles that path
+    // after CI has built the assets, so baking an absolute /build/ base makes Inertia
+    // SPA navigation request chunks from the app origin and 404. A relative base
+    // sidesteps that: chunks load from the same origin and path as app.js, whether
+    // that is a separate asset host or the app's own origin. Laravel's @vite entry
+    // tags are unaffected, because the manifest keeps relative `file` paths and is
+    // prefixed with the runtime ASSET_URL. Dev keeps the plugin default so HMR works.
     base: command === 'build' ? './' : undefined,
     plugins: [
         laravel({
@@ -39,6 +39,11 @@ export default defineConfig(({ command }) => ({
         environment: 'jsdom',
         globals: true,
         setupFiles: ['tests/js/setup.js'],
+        // Collect only the suite, not everything in the tree that happens to be
+        // named like a test. Without this the default glob walks the whole project,
+        // so a git worktree checked out inside the repository is collected too and
+        // the reported test count silently counts the same files more than once.
+        include: ['tests/js/**/*.{test,spec}.js'],
         server: {
             deps: {
                 inline: ['vuetify'],

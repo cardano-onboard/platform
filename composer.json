@@ -1,6 +1,6 @@
 {
     "name": "cardano-onboard/onboard-ninja",
-    "version": "1.3.0-beta",
+    "version": "1.4.0-beta",
     "type": "project",
     "description": "Cardano token airdrop and claim platform.",
     "keywords": [
@@ -11,18 +11,23 @@
     "license": "Apache-2.0",
     "require": {
         "php": "^8.2",
+        "ext-bcmath": "*",
+        "ext-gd": "*",
+        "ext-sodium": "*",
         "aws/aws-sdk-php": "^3.384",
         "cardano-php/bech32": "^1.1",
+        "cardano-php/data-client": "^0.2",
+        "cardano-php/transaction": "^0.1",
         "chillerlan/php-qrcode": "^6.0",
         "guzzlehttp/guzzle": "^7.2",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.8",
-        "laravel/vapor-core": "^2.37",
         "league/flysystem-aws-s3-v3": "3.0",
         "predis/predis": "^3.5",
         "setasign/fpdf": "^1.8",
+        "spomky-labs/cbor-php": "^3.0",
         "symfony/http-client": "^7.4",
         "symfony/postmark-mailer": "^7.4",
         "tightenco/ziggy": "^2.0"

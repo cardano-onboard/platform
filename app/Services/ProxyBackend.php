@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
+use App\Support\MinUtxo;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ProxyBackend implements TransactionBackend
 {
@@ -70,5 +72,37 @@ class ProxyBackend implements TransactionBackend
         ]);
 
         return $response->json() ?? [];
+    }
+
+    /**
+     * Asked of the proxy, which is the only thing this backend can see. Anything other
+     * than a positive coefficient, including a failed request, falls back to the
+     * configured default and says so, because a minimum computed from a zero would read
+     * as free.
+     */
+    public function protocolParameters(string $network): array
+    {
+        $fallback = [
+            'coins_per_utxo_byte' => MinUtxo::defaultCoinsPerUtxoByte(),
+            'source' => 'default',
+        ];
+
+        try {
+            $response = $this->client()->get('/protocol-parameters', ['network' => $network]);
+        } catch (\Throwable $e) {
+            Log::error('ProxyBackend protocol parameters error: '.$e->getMessage());
+
+            return $fallback;
+        }
+
+        if (! $response->successful()) {
+            return $fallback;
+        }
+
+        $coinsPerByte = (int) ($response->json('coins_per_utxo_byte') ?? 0);
+
+        return $coinsPerByte > 0
+            ? ['coins_per_utxo_byte' => $coinsPerByte, 'source' => 'proxy']
+            : $fallback;
     }
 }

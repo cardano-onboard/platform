@@ -52,7 +52,10 @@ class AuthTest extends DuskTestCase
                 ->type('input[type="email"]', $user->email)
                 ->type('input[type="password"]', 'wrong-password')
                 ->click('.v-card-actions button[type="submit"]')
-                ->pause(2000)
+                // Wait for the rejection itself rather than pausing and checking the path.
+                // Staying on /login is also what happens when the submit never reaches the
+                // page at all, so the path alone lets this pass while proving nothing.
+                ->waitForText('These credentials do not match our records.')
                 ->assertPathIs('/login')
                 ->assertDontSee('Your Campaigns');
         });
@@ -63,22 +66,28 @@ class AuthTest extends DuskTestCase
         $user = User::factory()->create();
 
         $this->browse(function (Browser $browser) use ($user) {
+            // The user-menu activator is the only tonal button in the app bar.
+            $activator = '.v-app-bar .v-btn--variant-tonal';
+            $menu = '.v-overlay__content .v-list';
+            // Identified by its mdi-logout icon rather than its label, which is translated.
+            $logout = '.v-overlay__content .v-list-item:has(.mdi-logout)';
+
             $browser->loginAs($user)
                 ->visit('/dashboard')
-                // Wait for the Vue app to actually mount before touching the app bar —
-                // a bare assertSee does not wait, so the menu click below could fire
-                // before Vuetify wired up the v-menu and silently fail to open it.
+                // Wait for the Vue app to mount before touching the app bar, because a
+                // bare assertSee does not wait.
                 ->waitForText('Your Campaigns')
-                // The user-menu activator is the only tonal button in the app bar. Wait
-                // for it to render and give the v-menu a beat to bind before clicking.
-                ->waitFor('.v-app-bar .v-btn--variant-tonal')
-                ->pause(500)
-                // Open user menu dropdown
-                ->click('.v-app-bar .v-btn--variant-tonal')
-                ->waitFor('.v-overlay__content .v-list', 10)
-                ->pause(300)
-                // Click the Log Out item — identified by its mdi-logout icon
-                ->click('.v-overlay__content .v-list-item:has(.mdi-logout)')
+                ->waitFor($activator);
+
+            // Establish that the browser still delivers synthesised input before asking it
+            // to open the menu. A session that has stopped doing so accepts the click
+            // without error and the page never sees it, which otherwise surfaces here as a
+            // user menu that will not open.
+            $this->assertBrowserReceivesInput($browser);
+
+            $browser->click($activator)
+                ->waitFor($menu)
+                ->click($logout)
                 ->waitForLocation('/')
                 ->assertPathIs('/');
         });

@@ -1,11 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import Dashboard from '../../resources/js/Pages/Dashboard.vue';
 
 // Helper to mount Dashboard with campaigns prop
-function mountDashboard(campaigns = []) {
+function mountDashboard(campaigns = [], props = {}) {
     return mount(Dashboard, {
-        props: { campaigns },
+        props: { campaigns, ...props },
         global: {
             stubs: {
                 AuthenticatedLayout: {
@@ -144,6 +145,14 @@ describe('Dashboard', () => {
     });
 });
 
+// The list sits directly on the page, as the codes list on a campaign page does.
+it('does not wrap the campaign list in a card', () => {
+    const wrapper = mountDashboard([makeCampaign()]);
+
+    expect(wrapper.find('.v-data-table').element.closest('.v-card')).toBeNull();
+    expect(wrapper.find('.v-toolbar').element.closest('.v-card')).toBeNull();
+});
+
 describe('Dashboard search', () => {
     // Six campaigns: the field only appears once the list is long enough to hunt through.
     function sixCampaigns() {
@@ -212,5 +221,178 @@ describe('Dashboard search', () => {
 
         expect(wrapper.text()).toContain('Hackathon');
         expect(wrapper.text()).toContain('Rare Evo 2026');
+    });
+
+    // The creation dialog on this page had a hardcoded network list that ignored the
+    // deployment's allowlist, and it also omitted preview, so it disagreed with the
+    // create page as well as with the server.
+    describe('network selector', () => {
+        function networkItems(wrapper) {
+            return wrapper.vm.networks;
+        }
+
+        it('offers only the networks the deployment accepts', () => {
+            const wrapper = mountDashboard([], { allowed_networks: ['preprod'] });
+
+            expect(networkItems(wrapper)).toEqual(['preprod']);
+        });
+
+        it('keeps the create page ordering', () => {
+            const wrapper = mountDashboard([], {
+                allowed_networks: ['mainnet', 'preprod', 'preview'],
+            });
+
+            expect(networkItems(wrapper)).toEqual(['preprod', 'preview', 'mainnet']);
+        });
+
+        it('offers preview, which the hardcoded list left out', () => {
+            const wrapper = mountDashboard([], {
+                allowed_networks: ['preprod', 'preview', 'mainnet'],
+            });
+
+            expect(networkItems(wrapper)).toContain('preview');
+        });
+    });
+
+    // A deployment restricted to preprod/preview still has to tell an operator where a
+    // mainnet campaign actually gets created, or the field just goes quiet on them.
+    describe('mainnet hint', () => {
+        async function openDialog(wrapper) {
+            const createBtn = wrapper.findAll('button').find(btn => btn.text().includes('Create Campaign'));
+            await createBtn.trigger('click');
+            await wrapper.vm.$nextTick();
+            return document.body.textContent;
+        }
+
+        it('says nothing when mainnet_app_url is unset', async () => {
+            const wrapper = mountDashboard([], { allowed_networks: ['preprod', 'preview'] });
+
+            expect(await openDialog(wrapper)).not.toContain('Mainnet campaigns are created at');
+        });
+
+        it('says nothing when mainnet is already allowed, even if mainnet_app_url is set', async () => {
+            const wrapper = mountDashboard([], {
+                allowed_networks: ['preprod', 'preview', 'mainnet'],
+                mainnet_app_url: 'https://example.com',
+            });
+
+            expect(await openDialog(wrapper)).not.toContain('Mainnet campaigns are created at');
+        });
+
+        it('shows the hint with the configured URL when mainnet is excluded and the URL is set', async () => {
+            const wrapper = mountDashboard([], {
+                allowed_networks: ['preprod', 'preview'],
+                mainnet_app_url: 'https://example.com',
+            });
+
+            const body = await openDialog(wrapper);
+            expect(body).toContain('Mainnet campaigns are created at https://example.com');
+        });
+    });
+});
+
+// Below the md breakpoint the table's own stacked layout gave every column a
+// full-height labelled row, so one campaign filled most of a phone screen. Each
+// campaign is one compact row there instead, and it still has to carry everything.
+describe('Dashboard on a phone', () => {
+    const desktopWidth = window.innerWidth;
+
+    // Vuetify recomputes its breakpoints in a watcher, so the new width only
+    // applies after a tick.
+    async function setWidth(width) {
+        window.innerWidth = width;
+        window.dispatchEvent(new Event('resize'));
+        await nextTick();
+    }
+
+    beforeEach(() => setWidth(360));
+    afterEach(() => setWidth(desktopWidth));
+
+    it('renders each campaign as one compact row', () => {
+        const wrapper = mountDashboard([
+            makeCampaign({ name: 'Alpha Airdrop' }),
+            makeCampaign({ id: '01HQ9999999999ZYXWVUTSRQ', name: 'Beta Drop' }),
+        ]);
+
+        expect(wrapper.findAll('tr.campaign-card')).toHaveLength(2);
+        // The stacked layout labelled every value with its column title per row.
+        expect(wrapper.find('.v-data-table__td-title').exists()).toBe(false);
+    });
+
+    it('keeps every column of the campaign in the compact row', () => {
+        const wrapper = mountDashboard([
+            makeCampaign({
+                name: 'Rare Evo 2026',
+                description: 'Las Vegas booth',
+                status: 'upcoming',
+                network: 'mainnet',
+                start_date: '2026-08-01',
+                end_date: '2026-08-03',
+                codes_count: 1250,
+                claims_count: 1,
+            }),
+        ]);
+        const card = wrapper.find('tr.campaign-card').text();
+
+        expect(card).toContain('Rare Evo 2026');
+        expect(card).toContain('Las Vegas booth');
+        expect(card).toContain('upcoming');
+        expect(card).toContain('mainnet');
+        expect(card).toContain('2026-08-01 to 2026-08-03');
+        expect(card).toContain('1250 codes');
+        expect(card).toContain('1 claim');
+        expect(card).not.toContain('1 claims');
+    });
+
+    it('keeps the view and edit links, and remove only while nothing is claimed', () => {
+        const wrapper = mountDashboard([
+            makeCampaign({ id: 'claimed', name: 'Has Claims', claims_count: 5 }),
+            makeCampaign({ id: 'unclaimed', name: 'No Claims', claims_count: 0 }),
+        ]);
+        const [claimed, unclaimed] = wrapper.findAll('tr.campaign-card');
+
+        for (const card of [claimed, unclaimed]) {
+            expect(card.find('.mdi-magnify').exists()).toBe(true);
+            expect(card.find('.mdi-pencil').exists()).toBe(true);
+        }
+        expect(claimed.find('.mdi-trash-can').exists()).toBe(false);
+        expect(unclaimed.find('.mdi-trash-can').exists()).toBe(true);
+    });
+
+    it('opens the remove dialog from the compact row', async () => {
+        const wrapper = mountDashboard([makeCampaign({ name: 'Doomed Campaign', claims_count: 0 })]);
+
+        await wrapper.find('tr.campaign-card .mdi-trash-can').element.closest('button').click();
+        await wrapper.vm.$nextTick();
+
+        expect(document.body.textContent).toContain('You have chosen to remove your');
+        expect(document.body.textContent).toContain('Doomed Campaign');
+    });
+
+    // The full button label left the title room for "Yo..." at 360px, and a spacer
+    // beside the title took half of what was left.
+    it('keeps the whole title and a 44px create button in the header', async () => {
+        const wrapper = mountDashboard([makeCampaign()]);
+        const toolbar = wrapper.find('.v-toolbar');
+        const button = toolbar.find('button');
+
+        expect(toolbar.find('.v-toolbar-title').text()).toBe('Your Campaigns');
+        expect(toolbar.find('.v-spacer').exists()).toBe(false);
+        expect(button.text()).toBe('Create');
+        expect(button.attributes('aria-label')).toBe('Create Campaign');
+        expect(button.attributes('style')).toContain('height: 44px');
+
+        await button.trigger('click');
+        await wrapper.vm.$nextTick();
+        expect(document.body.textContent).toContain('Create New Campaign');
+    });
+
+    it('keeps the full table row layout on a wide screen', async () => {
+        await setWidth(desktopWidth);
+        const wrapper = mountDashboard([makeCampaign()]);
+
+        expect(wrapper.find('tr.campaign-card').exists()).toBe(false);
+        expect(wrapper.text()).toContain('Claims');
+        expect(wrapper.find('.v-toolbar button').text()).toBe('Create Campaign');
     });
 });

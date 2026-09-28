@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
+use App\Support\MinUtxo;
 use Illuminate\Support\Str;
 
 class NullBackend implements TransactionBackend
@@ -42,5 +43,21 @@ class NullBackend implements TransactionBackend
     public function getBalance(string $address, string $network): array
     {
         return [];
+    }
+
+    /**
+     * The configured fallback, and honest about being one.
+     *
+     * This backend talks to no chain, so there is no epoch to read. Returning the default
+     * keeps the minimum-UTxO calculation working on a deployment with no transaction
+     * backend configured, which is how the test suite and a fresh self-hosted install both
+     * run.
+     */
+    public function protocolParameters(string $network): array
+    {
+        return [
+            'coins_per_utxo_byte' => MinUtxo::defaultCoinsPerUtxoByte(),
+            'source' => 'default',
+        ];
     }
 }

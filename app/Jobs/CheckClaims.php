@@ -2,7 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Contracts\ReportsTaskProgress;
+use App\Jobs\Concerns\TracksCampaignTask;
 use App\Models\Campaign;
+use App\Models\CampaignTask;
+use App\Services\ClaimStatusChecker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,24 +15,88 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 
-class CheckClaims implements ShouldBeUnique, ShouldQueue
+/**
+ * Asks the transaction backend about every claim on one campaign still awaiting an answer.
+ *
+ * Two callers dispatch this. The scheduler sends one every few minutes with no task row,
+ * and nobody is watching it. The Check claims button sends one with a task row, and an
+ * operator is watching the page for the answer, so that run reports itself through the
+ * row like every other job on the page and the page reloads the claims when it finishes.
+ */
+class CheckClaims implements ReportsTaskProgress, ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, TracksCampaignTask;
 
-    public const MAX_RETRIES = 5;
+    /** What this run is called on the campaign page. */
+    public const TASK_TYPE = 'check-claims';
 
-    public function __construct(public string $campaign_id)
+    /**
+     * Kept as a class constant because it is the ceiling callers and tests refer to; the
+     * retry logic itself lives with the pass in App\Services\ClaimStatusChecker.
+     */
+    public const MAX_RETRIES = ClaimStatusChecker::MAX_RETRIES;
+
+    /**
+     * How long a run somebody asked for waits on a pass already in flight.
+     *
+     * The scheduler's own pass may be holding the campaign when the button is pressed.
+     * Returning at once would finish the operator's run having checked nothing, so it waits
+     * for that pass to end and then asks about whatever is still outstanding.
+     */
+    public const WAIT_SECONDS = 60;
+
+    /**
+     * The wait above plus the checker's own lock window, which is the longest a pass is
+     * allowed to hold the campaign. Well inside the task framework's stale window, so a
+     * run that is still working is never reclaimed as dead.
+     */
+    public int $timeout = 360;
+
+    public function __construct(public string $campaign_id, public ?string $task_id = null)
     {
         //
     }
 
     /**
-     * Unique key per campaign — without this, Laravel uses the class name
-     * as the unique key, blocking ALL campaigns when one job is queued.
+     * One run per campaign.
+     *
+     * The status check covers every outstanding claim on the campaign, so there is nothing
+     * narrower to key on, and a second run while the first is going would ask the backend
+     * the same questions again.
+     */
+    public static function dedupeKey(): string
+    {
+        return CampaignTask::DEFAULT_KEY;
+    }
+
+    /**
+     * What a finished check changes on the campaign page.
+     *
+     * Claim statuses and hashes reach the page inside the campaign prop, and the onboarding
+     * panel carries the count still awaiting confirmation. The charts count claims by
+     * creation date and the costs read recorded fees, neither of which a status check
+     * changes, so they are left alone.
+     *
+     * @return list<string>
+     */
+    public static function reloads(): array
+    {
+        return ['campaign', 'onboarding'];
+    }
+
+    /**
+     * Unique key per campaign, so one campaign's queued check does not hold off another's.
+     *
+     * A run somebody asked for is keyed on its task row as well. The row already stops a
+     * second request from the page, and sharing the scheduler's key would let a queued
+     * scheduled run swallow the dispatch silently, leaving the row saying "queued" with no
+     * job behind it.
      */
     public function uniqueId(): string
     {
-        return $this->campaign_id;
+        return $this->task_id === null
+            ? $this->campaign_id
+            : $this->campaign_id.':'.$this->task_id;
     }
 
     /**
@@ -41,9 +109,14 @@ class CheckClaims implements ShouldBeUnique, ShouldQueue
         return max(60, ((int) config('cardano.push_delay', 5)) * 60 * 2);
     }
 
-    public function handle(): void
+    public function handle(?ClaimStatusChecker $checker = null): void
     {
-        Log::info('CheckClaims: starting', ['campaign_id' => $this->campaign_id]);
+        Log::info('CheckClaims: starting', [
+            'campaign_id' => $this->campaign_id,
+            'task_id' => $this->task_id,
+        ]);
+
+        $this->beginTask();
 
         $campaign = Campaign::with('wallet')
             ->find($this->campaign_id);
@@ -51,109 +124,47 @@ class CheckClaims implements ShouldBeUnique, ShouldQueue
         if (! $campaign) {
             Log::error('CheckClaims: campaign not found', ['campaign_id' => $this->campaign_id]);
 
+            $this->failTask('That campaign no longer exists.');
+
             return;
         }
 
-        $check_claims = $campaign->claims()
-            ->with(['code.rewards'])
-            ->whereNotNull('transaction_id')
-            ->whereNull('transaction_hash')
-            ->whereNotIn('status', ['failed', 'completed'])
-            ->get();
+        $checker ??= app(ClaimStatusChecker::class);
 
-        Log::info('CheckClaims: found pending claims', [
-            'campaign_id' => $this->campaign_id,
-            'pending_count' => $check_claims->count(),
-        ]);
+        if ($this->task_id === null) {
+            // The scheduler does not wait on a pass already running: it comes round again,
+            // and a worker held open for one is a worker doing nothing.
+            $checker->check($campaign);
 
-        if ($check_claims->isEmpty()) {
             return;
         }
 
-        $backend = $campaign->wallet->resolveBackend();
+        $stats = $checker->check($campaign, waitSeconds: self::WAIT_SECONDS, progress: $this);
 
-        $stats = ['completed' => 0, 'timeout' => 0, 'retried' => 0, 'failed' => 0, 'processing' => 0, 'unknown' => 0];
+        if ($stats['skipped']) {
+            $this->failTask('Another status check for this campaign was still running. Try again in a few minutes.');
 
-        foreach ($check_claims as $claim) {
-            if (! $claim->transaction_id) {
-                continue;
-            }
-
-            $result = $backend->checkStatus($claim->transaction_id, $campaign->network);
-
-            Log::info('CheckClaims: checkStatus result', [
-                'campaign_id' => $this->campaign_id,
-                'claim_id' => $claim->id,
-                'transaction_id' => $claim->transaction_id,
-                'result_status' => $result['status'] ?? null,
-                'tx_hash' => $result['txHash'] ?? null,
-            ]);
-
-            switch ($result['status']) {
-                case 'completed':
-                    $claim->transaction_hash = $result['txHash'];
-                    $claim->status = 'completed';
-                    $claim->save();
-                    $stats['completed']++;
-                    break;
-
-                case 'timeout':
-                    $claim->retry_count++;
-                    if ($claim->retry_count >= self::MAX_RETRIES) {
-                        $claim->status = 'failed';
-                        $claim->save();
-                        $stats['failed']++;
-                        Log::warning('CheckClaims: claim exceeded max retries, marked failed', [
-                            'campaign_id' => $this->campaign_id,
-                            'claim_id' => $claim->id,
-                            'retry_count' => $claim->retry_count,
-                        ]);
-                    } else {
-                        $claim->transaction_id = null;
-                        $claim->status = 'pending';
-                        $claim->save();
-                        $stats['retried']++;
-                        Log::info('CheckClaims: retrying claim', [
-                            'campaign_id' => $this->campaign_id,
-                            'claim_id' => $claim->id,
-                            'retry_count' => $claim->retry_count,
-                        ]);
-                        ProcessClaims::dispatch($this->campaign_id)
-                            ->delay((int) config('cardano.push_delay', 5) * 60);
-                    }
-                    break;
-
-                case 'processing':
-                    // Phyrhose is working on the transaction but it hasn't hit the chain yet.
-                    // No action needed — the next scheduler tick will check again.
-                    $stats['processing']++;
-                    Log::info('CheckClaims: claim still processing', [
-                        'campaign_id' => $this->campaign_id,
-                        'claim_id' => $claim->id,
-                        'transaction_id' => $claim->transaction_id,
-                    ]);
-                    break;
-
-                default:
-                    $stats['unknown']++;
-                    Log::warning('CheckClaims: unknown status from backend', [
-                        'campaign_id' => $this->campaign_id,
-                        'claim_id' => $claim->id,
-                        'result' => $result,
-                    ]);
-                    break;
-            }
+            return;
         }
 
-        Log::info('CheckClaims: completed', [
-            'campaign_id' => $this->campaign_id,
-            'total_checked' => $check_claims->count(),
-            'stats' => $stats,
-        ]);
+        $this->succeed(array_intersect_key($stats, array_flip([
+            'checked', 'completed', 'retried', 'failed', 'processing', 'unknown',
+        ])));
     }
 
+    /**
+     * The scheduler's runs are dropped while another is working on the same campaign.
+     *
+     * A run somebody asked for is not, because a job the queue drops never reaches failed()
+     * and its task row would sit at "queued" until the stale sweep. It waits on the
+     * checker's own per-campaign lock instead, which keeps two passes apart just the same.
+     */
     public function middleware(): array
     {
+        if ($this->task_id !== null) {
+            return [];
+        }
+
         return [
             (new WithoutOverlapping($this->campaign_id))->dontRelease()
                 ->expireAfter(180),

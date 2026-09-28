@@ -6,17 +6,12 @@ import {createInertiaApp} from '@inertiajs/vue3';
 import {resolvePageComponent} from 'laravel-vite-plugin/inertia-helpers';
 import {ZiggyVue} from '../../vendor/tightenco/ziggy';
 
-import Vapor from 'laravel-vapor'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 import {createVuetify} from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import vueCardano from "@/plugins/vue-cardano.js";
-
-
-Vapor.withBaseAssetUrl(import.meta.env.VITE_VAPOR_ASSET_URL)
-window.Vapor = Vapor
 
 const vuetify = createVuetify({
     components,
@@ -71,9 +66,6 @@ createInertiaApp({
             .use(vuetify)
             .use(vueCardano)
             .use(ZiggyVue, Ziggy)
-            .mixin({
-                methods: {asset: window.Vapor.asset}
-            })
             .mount(el);
     },
     progress: {

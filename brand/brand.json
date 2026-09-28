@@ -1,0 +1,88 @@
+{
+  "name": "Onboard.Ninja",
+  "tagline": "Cardano airdrops for live events, and proof of who they onboarded",
+  "color": {
+    "primary": {
+      "value": "#FE5B24",
+      "note": "Onboard orange. The single brand colour. Source: tailwind.config.js, resources/js/app.js, the marketing site stylesheet and the Figma exports all agree."
+    },
+    "primaryLight": {
+      "value": "#FF7A3D",
+      "note": "Hover and accent. Source: tailwind.config.js brand.light, Vuetify accent."
+    },
+    "primaryDark": {
+      "value": "#DC3700",
+      "note": "Pressed and active states. Source: tailwind.config.js brand.dark."
+    },
+    "ink": {
+      "value": "#262626",
+      "note": "Logo and heading colour on light backgrounds. Source: the Figma logo export."
+    },
+    "paper": {
+      "value": "#FFFFFF",
+      "note": "Light surface, and the logo colour on dark backgrounds."
+    },
+    "surfaceDark": {
+      "value": "#1E1E1E",
+      "note": "Dark surface. Source: the Vuetify onboard_dark theme."
+    },
+    "backgroundDark": {
+      "value": "#121212",
+      "note": "Dark page background. Source: the Vuetify onboard_dark theme."
+    },
+    "cardanoBlue": {
+      "value": "#0033AD",
+      "note": "Cardano's own blue. Used only when referring to Cardano itself, never as an Onboard.Ninja colour. Source: the marketing site stylesheet and the tutorial illustrations."
+    }
+  },
+  "typography": {
+    "heading": {
+      "family": "Varela",
+      "stack": "Varela, Inter, system-ui, sans-serif",
+      "weight": 400,
+      "note": "The brand face. Varela ships a single weight, 400, which is all a heading needs. It is the voice of the wordmark and should not be used for running text.",
+      "source": "bunny.net in the application, Google Fonts on the marketing site"
+    },
+    "body": {
+      "family": "Inter",
+      "stack": "Inter, system-ui, sans-serif",
+      "weights": [
+        400,
+        500,
+        600,
+        700
+      ],
+      "note": "Body text, UI labels and anything long enough to read. Inter is also what the project uses in its documents, so written material and the product match. It is the only face in the system carrying the ada sign at U+20B3: verified against Inter v20 (2849 glyphs) against Varela v17 (531) and the Figtree latin subset (222), neither of which has it. Write the symbol; never spell out ADA where the symbol belongs."
+    },
+    "mono": {
+      "stack": "ui-monospace, SFMono-Regular, Menlo, monospace",
+      "note": "Addresses, policy IDs, claim codes and transaction hashes are always monospace."
+    }
+  },
+  "logo": {
+    "primary": "assets/wordmark-colour-on-light.svg",
+    "primaryOnDark": "assets/wordmark-colour-on-dark.svg",
+    "mono": "assets/wordmark-mono-ink.svg",
+    "monoOnDark": "assets/wordmark-mono-paper.svg",
+    "adaptive": "assets/wordmark-currentcolor.svg",
+    "mark": "assets/mark-ink.svg",
+    "markOnDark": "assets/mark-paper.svg"
+  },
+  "naming": {
+    "correct": "Onboard.Ninja",
+    "incorrect": [
+      "Onboard Ninja",
+      "onboard.ninja (in prose)",
+      "OnboardNinja",
+      "ONBOARD.NINJA",
+      "Onboard ninja"
+    ],
+    "note": "The wordmark reads ONBOARD because the ninja is the O. In running text the product is Onboard.Ninja. The domain onboard.ninja and the handle @OnboardNinja are written as they are."
+  },
+  "logoUsage": {
+    "minWidthPx": 96,
+    "clearSpace": "One mark-height on every side. The mark is the ninja face inside the O.",
+    "placement": "Never recolour, rotate, outline, add a shadow to, or stretch the logo. Never place the colour wordmark on a background between roughly 30 and 70 percent luminance: use a mono variant there."
+  },
+  "_seeAlso": "docs/brand-style-guide.md holds the full theme token tables and the Vuetify and Tailwind mapping. This file and that one must move together."
+}

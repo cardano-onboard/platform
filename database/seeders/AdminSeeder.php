@@ -12,7 +12,7 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        User::updateOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => config('admin.email', 'admin@onboard.ninja')],
             [
                 'name' => 'Admin',
@@ -20,5 +20,9 @@ class AdminSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        // Force-filled because is_admin is kept out of $fillable, so that registration
+        // cannot grant it. Seeding is the one place that is entitled to set it.
+        $admin->forceFill(['is_admin' => true])->save();
     }
 }

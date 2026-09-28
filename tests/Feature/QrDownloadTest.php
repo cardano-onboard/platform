@@ -2,12 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\CodeController;
+use App\Jobs\GenerateQrExport;
 use App\Models\Campaign;
+use App\Models\CampaignTask;
 use App\Models\Code;
+use App\Models\QrExport;
 use App\Models\User;
 use App\Services\QrExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -22,6 +28,55 @@ class QrDownloadTest extends TestCase
         // Idempotent QR bundles are written to the default disk; fake it so tests don't
         // touch real storage and can inspect the cached artifacts.
         Storage::fake('local');
+    }
+
+    /**
+     * Ask for a bundle and let the queue produce it.
+     *
+     * The tests run on the sync connection, so the render happens inside this request and the
+     * redirect comes back with the bundle already stored. That is what a developer checkout
+     * and an install with no worker both do, and it is why the request is asserted as a
+     * redirect rather than a download: this endpoint no longer serves bytes.
+     */
+    private function requestExport(User $user, Campaign $campaign, array $settings = []): void
+    {
+        $this->actingAs($user)
+            ->post(route('campaigns.qr-exports.store', $campaign), $settings)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('campaigns.show', $campaign));
+    }
+
+    /** Fetch a bundle that has already been built. */
+    private function download(User $user, Campaign $campaign, array $settings = [])
+    {
+        $url = route('campaigns.download-qr', $campaign);
+
+        return $this->actingAs($user)->get($settings === [] ? $url : $url.'?'.http_build_query($settings));
+    }
+
+    /**
+     * Point the deployment's claim endpoint at a subdomain.
+     *
+     * Routes are registered before a test can set config, so the domain route is registered
+     * here the way bootstrap/app.php registers it. Without it claimUrl() correctly degrades
+     * to the long route and nothing about the payload changes.
+     */
+    private function useClaimSubdomain(string $domain): void
+    {
+        config()->set('cardano.claim_domain', $domain);
+
+        Route::middleware('api')->domain($domain)
+            ->post('/v1/{campaign}', [CodeController::class, 'claim'])
+            ->name('claim.v1.short');
+        Route::getRoutes()->refreshNameLookups();
+    }
+
+    /** Ask for a bundle, then fetch it: what the operator does, in two requests. */
+    private function exportAndDownload(User $user, Campaign $campaign, array $settings = [])
+    {
+        $this->requestExport($user, $campaign, $settings);
+
+        return $this->download($user, $campaign, $settings);
     }
 
     public function test_download_qr_requires_auth(): void
@@ -59,16 +114,36 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create();
         Code::factory()->for($campaign)->count(3)->create();
 
-        $response = $this->actingAs($user)->get(route('campaigns.download-qr', $campaign));
+        $response = $this->exportAndDownload($user, $campaign);
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/zip');
         $this->assertStringContains('qrcodes-', $response->headers->get('Content-Disposition'));
     }
 
+    public function test_a_download_of_a_bundle_nobody_has_built_queues_it_instead_of_rendering_inline(): void
+    {
+        $user = User::factory()->create();
+        $campaign = Campaign::factory()->for($user)->create();
+        Code::factory()->for($campaign)->count(2)->create();
+
+        // The old contract rendered here, holding the request open for the whole render.
+        $response = $this->download($user, $campaign);
+
+        $response->assertRedirect(route('campaigns.show', $campaign));
+        $this->assertDatabaseHas('campaign_tasks', [
+            'campaign_id' => $campaign->id,
+            'type' => GenerateQrExport::TASK_TYPE,
+            'status' => CampaignTask::STATUS_COMPLETE,
+        ]);
+        // On the sync connection the run finished inside that request, so the bundle it
+        // queued is already there for the next one.
+        $this->download($user, $campaign)->assertOk();
+    }
+
     public function test_download_qr_survives_an_unconfigured_cloud_disk(): void
     {
-        // Regression guard for the Laravel Cloud 500: the app resolved an s3-driver disk
+        // Regression guard for a 500 seen in the wild: the app resolved an s3-driver disk
         // whose AWS_BUCKET was never injected, and Flysystem type-errored on the null
         // bucket before a single byte was written. The export must still be served.
         config(['cardano.qr_storage.disk' => 'private']);
@@ -78,12 +153,14 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create();
         Code::factory()->for($campaign)->count(2)->create();
 
-        $response = $this->actingAs($user)->get(route('campaigns.download-qr', $campaign));
+        $response = $this->exportAndDownload($user, $campaign);
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/zip');
-        // Served from the local disk it fell back to, not from the broken cloud disk.
+        // Served from the local disk it fell back to, not from the broken cloud disk. The
+        // row has to name that disk too, or a download next week looks in the wrong place.
         $this->assertCount(1, Storage::disk('local')->allFiles('qr-exports'));
+        $this->assertSame('local', QrExport::where('campaign_id', $campaign->id)->value('disk'));
     }
 
     public function test_download_qr_is_idempotent_across_requests(): void
@@ -92,16 +169,19 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create();
         Code::factory()->for($campaign)->count(2)->create();
 
-        $this->actingAs($user)->get(route('campaigns.download-qr', $campaign))->assertOk();
+        $this->exportAndDownload($user, $campaign)->assertOk();
 
         $files = Storage::disk('local')->allFiles('qr-exports');
         $this->assertCount(1, $files, 'export bundle should be cached to the disk');
 
-        // Replace the cached bundle with a sentinel; an identical second request must serve
-        // THIS stored file (proving it did not regenerate), not rebuild the ZIP.
+        // Replace the cached bundle with a sentinel; asking for the same export again must
+        // leave THIS stored file alone (proving nothing was re-rendered) and serve it.
         Storage::disk('local')->put($files[0], 'SENTINEL');
 
-        $again = $this->actingAs($user)->get(route('campaigns.download-qr', $campaign));
+        $this->requestExport($user, $campaign);
+        $this->assertSame('SENTINEL', Storage::disk('local')->get($files[0]), 'a second request re-rendered a bundle that was already stored');
+
+        $again = $this->download($user, $campaign);
         $again->assertOk();
         $this->assertSame('SENTINEL', $again->streamedContent());
     }
@@ -112,13 +192,92 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create();
         Code::factory()->for($campaign)->count(2)->create();
 
-        $this->actingAs($user)->get(route('campaigns.download-qr', $campaign))->assertOk();
+        $this->exportAndDownload($user, $campaign)->assertOk();
         $this->assertCount(1, Storage::disk('local')->allFiles('qr-exports'));
 
         // Adding a code changes the codes-version → new cache key → a fresh bundle.
         Code::factory()->for($campaign)->create();
-        $this->actingAs($user)->get(route('campaigns.download-qr', $campaign))->assertOk();
+        $this->exportAndDownload($user, $campaign)->assertOk();
         $this->assertCount(2, Storage::disk('local')->allFiles('qr-exports'));
+    }
+
+    public function test_changing_the_claim_url_produces_a_fresh_bundle(): void
+    {
+        // The claim URL is encoded into every sticker. It was not part of the cache key, so
+        // pointing the deployment at a claim subdomain left the key where it was: the
+        // operator downloaded the bundle rendered for the old host, and printed it.
+        config()->set('cardano.claim_domain', null);
+
+        $user = User::factory()->create();
+        $campaign = Campaign::factory()->for($user)->create();
+        $code = Code::factory()->for($campaign)->create();
+
+        $before = $this->exportAndDownload($user, $campaign, ['format' => 'svg']);
+        $before->assertOk();
+        $onOldHost = $this->zipEntries($this->downloadedBytes($before))[$code->code.'.svg'];
+
+        $this->useClaimSubdomain('claim.onbd.test');
+
+        // The stored bundle must not be served: its stickers point at the previous host.
+        $this->download($user, $campaign, ['format' => 'svg'])
+            ->assertRedirect(route('campaigns.show', $campaign));
+
+        $after = $this->exportAndDownload($user, $campaign, ['format' => 'svg']);
+        $after->assertOk();
+        $onNewHost = $this->zipEntries($this->downloadedBytes($after))[$code->code.'.svg'];
+
+        $this->assertCount(2, Storage::disk('local')->allFiles('qr-exports'), 'the new claim URL should have produced its own bundle');
+        // The sticker is a rendering of the payload, so a sticker that did not change is a
+        // payload that did not change.
+        $this->assertNotSame($onOldHost, $onNewHost, 'the stickers still encode the old claim URL');
+    }
+
+    public function test_a_claim_domain_whose_route_is_missing_does_not_move_the_key(): void
+    {
+        // Routes cached at build time without the short route, with CLAIM_DOMAIN injected at
+        // runtime: claimUrl() degrades to the long route, so every sticker is unchanged and
+        // the stored bundle is still the right one. Keying on the configured domain rather
+        // than the resolved URL would have thrown that bundle away and re-rendered it.
+        $user = User::factory()->create();
+        $campaign = Campaign::factory()->for($user)->create();
+        Code::factory()->for($campaign)->create();
+
+        $exports = new QrExportService;
+        $opts = ['format' => 'pdf', 'size' => 1.0, 'dpi' => 203, 'ecc' => 'L', 'header' => false, 'footer' => false];
+        $before = $exports->cacheKey($campaign, $opts);
+
+        config()->set('cardano.claim_domain', 'claim.onbd.test');
+        $this->assertFalse(Route::has('claim.v1.short'), 'guard precondition: the short route is not registered');
+
+        $this->assertSame($before, $exports->cacheKey($campaign, $opts));
+    }
+
+    public function test_a_row_that_advertises_a_bundle_the_disk_no_longer_holds_is_corrected(): void
+    {
+        $user = User::factory()->create();
+        $campaign = Campaign::factory()->for($user)->create();
+        Code::factory()->for($campaign)->count(2)->create();
+
+        $this->requestExport($user, $campaign);
+
+        $export = QrExport::where('campaign_id', $campaign->id)->firstOrFail();
+        $this->assertSame(QrExport::STATUS_READY, $export->status);
+
+        // A bucket lifecycle rule deletes the object without telling the application.
+        Storage::disk('local')->delete($export->path);
+
+        // Held here so the state the operator is shown can be read. Let the run proceed and
+        // it rebuilds the same bundle and the row goes back to ready, which is the right
+        // ending and not the thing being checked.
+        Queue::fake();
+
+        $this->download($user, $campaign)->assertRedirect(route('campaigns.show', $campaign));
+
+        Queue::assertPushed(GenerateQrExport::class);
+
+        $export->refresh();
+        $this->assertSame(QrExport::STATUS_EXPIRED, $export->status, 'the row still advertises a download that would 404');
+        $this->assertNull($export->path);
     }
 
     public function test_codes_version_query_is_a_pure_aggregate(): void
@@ -194,12 +353,12 @@ class QrDownloadTest extends TestCase
 
         // Generated while active…
         $this->travelTo('2026-01-15');
-        $this->actingAs($user)->get(route('campaigns.download-qr', $campaign))->assertOk();
+        $this->exportAndDownload($user, $campaign)->assertOk();
         $this->assertCount(1, Storage::disk('local')->allFiles('qr-exports'));
 
         // …remains downloadable after the campaign ends (cache hit, no regeneration).
         $this->travelTo('2026-02-15');
-        $this->actingAs($user)->get(route('campaigns.download-qr', $campaign))->assertOk();
+        $this->download($user, $campaign)->assertOk();
         $this->travelBack();
     }
 
@@ -237,18 +396,44 @@ class QrDownloadTest extends TestCase
         $this->assertTrue($disk->exists('qr-exports/c/fresh.zip'));
     }
 
+    public function test_prune_command_removes_the_partials_of_renders_that_never_finished(): void
+    {
+        // An interrupted render leaves a half-finished archive beside the finished ones, and
+        // one whose settings stopped matching before it could be resumed is never picked up
+        // again. Nothing else deletes those, so a render abandoned every week would be a
+        // storage bill that only grows.
+        $disk = Storage::disk('local');
+        $disk->put('qr-exports/c/abandoned.zip.part', 'half an archive');
+        $disk->put('qr-exports/c/in-flight.zip.part', 'half an archive');
+        touch($disk->path('qr-exports/c/abandoned.zip.part'), now()->subDays(10)->getTimestamp());
+
+        $this->artisan('qr:prune-exports')->assertSuccessful();
+
+        $this->assertFalse($disk->exists('qr-exports/c/abandoned.zip.part'));
+        $this->assertTrue(
+            $disk->exists('qr-exports/c/in-flight.zip.part'),
+            'a render still working was cleared out from under itself',
+        );
+    }
+
     public function test_download_qr_defaults_to_pdf(): void
     {
         $user = User::factory()->create();
         $campaign = Campaign::factory()->for($user)->create();
         Code::factory()->for($campaign)->count(2)->create();
 
-        $response = $this->actingAs($user)->get(route('campaigns.download-qr', $campaign));
+        $response = $this->exportAndDownload($user, $campaign);
         $response->assertOk();
 
         $entries = $this->zipEntries($this->downloadedBytes($response));
-        $this->assertCount(2, $entries);
-        foreach ($entries as $name => $content) {
+
+        // Every archive carries the row-per-code manifest beside the stickers, so the
+        // stickers are what is counted here rather than the entries.
+        $this->assertArrayHasKey(QrExportService::MANIFEST_CSV, $entries);
+
+        $stickers = $this->stickers($entries);
+        $this->assertCount(2, $stickers);
+        foreach ($stickers as $name => $content) {
             $this->assertStringEndsWith('.pdf', $name);
             $this->assertStringStartsWith('%PDF', $content);
         }
@@ -260,12 +445,12 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create(['end_date' => '2026-12-31']);
         $code = Code::factory()->for($campaign)->create();
 
-        $response = $this->actingAs($user)->get(route('campaigns.download-qr', $campaign).'?'.http_build_query([
+        $response = $this->exportAndDownload($user, $campaign, [
             'format' => 'svg',
             'size' => 2,          // both captions require a large-enough sticker
             'header' => 1,
             'footer' => 1,
-        ]));
+        ]);
         $response->assertOk();
 
         $entries = $this->zipEntries($this->downloadedBytes($response));
@@ -304,19 +489,23 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create(['end_date' => '2026-12-31']);
         Code::factory()->for($campaign)->create();
 
-        // Both captions on a 1" sticker: rejected (QR would shrink too far to scan).
+        // Both captions on a 1" sticker: rejected (QR would shrink too far to scan). Asked
+        // for both ways round, because a combination one endpoint accepts and the other
+        // refuses is a bundle that can be built and never fetched.
         $this->actingAs($user)
             ->get(route('campaigns.download-qr', $campaign).'?size=1&header=1&footer=1')
             ->assertSessionHasErrors('footer');
 
-        // A single caption at 1" is fine.
         $this->actingAs($user)
-            ->get(route('campaigns.download-qr', $campaign).'?size=1&header=1&footer=0')
+            ->post(route('campaigns.qr-exports.store', $campaign), ['size' => 1, 'header' => 1, 'footer' => 1])
+            ->assertSessionHasErrors('footer');
+
+        // A single caption at 1" is fine.
+        $this->exportAndDownload($user, $campaign, ['size' => 1, 'header' => 1, 'footer' => 0])
             ->assertOk();
 
         // Both captions are allowed once the sticker is large enough.
-        $this->actingAs($user)
-            ->get(route('campaigns.download-qr', $campaign).'?size=1.5&header=1&footer=1')
+        $this->exportAndDownload($user, $campaign, ['size' => 1.5, 'header' => 1, 'footer' => 1])
             ->assertOk();
     }
 
@@ -326,18 +515,24 @@ class QrDownloadTest extends TestCase
         $campaign = Campaign::factory()->for($user)->create();
         $code = Code::factory()->for($campaign)->create();
 
-        $response = $this->actingAs($user)
-            ->get(route('campaigns.download-qr', $campaign).'?format=png&dpi=203&size=1');
+        $settings = ['format' => 'png', 'dpi' => 203, 'size' => 1];
 
         if (\App\Services\QrStickerService::pngSupported()) {
+            $response = $this->exportAndDownload($user, $campaign, $settings);
             $response->assertOk();
             $entries = $this->zipEntries($this->downloadedBytes($response));
             $this->assertArrayHasKey($code->code.'.png', $entries);
             // PNG magic number.
             $this->assertStringStartsWith("\x89PNG", $entries[$code->code.'.png']);
         } else {
-            // Without GD the option must be refused rather than silently producing junk.
-            $response->assertSessionHasErrors('format');
+            // Without GD the option must be refused rather than silently producing junk, and
+            // refused at the request too: queueing a render the worker cannot perform would
+            // turn a validation error into a failed job.
+            $this->actingAs($user)
+                ->post(route('campaigns.qr-exports.store', $campaign), $settings)
+                ->assertSessionHasErrors('format');
+
+            $this->download($user, $campaign, $settings)->assertSessionHasErrors('format');
         }
     }
 
@@ -347,6 +542,23 @@ class QrDownloadTest extends TestCase
     private function downloadedBytes($response): string
     {
         return $response->streamedContent();
+    }
+
+    /**
+     * The sticker entries of an archive, without the manifests describing them.
+     *
+     * @param  array<string, string>  $entries
+     * @return array<string, string>
+     */
+    private function stickers(array $entries): array
+    {
+        return array_filter(
+            $entries,
+            static fn (string $name) => $name !== QrExportService::MANIFEST_CSV
+                && $name !== QrExportService::HANDOVER_TXT
+                && ! str_ends_with($name, '/'.QrExportService::MANIFEST_TXT),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     /**

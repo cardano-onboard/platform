@@ -107,7 +107,6 @@ boilerplate):
 |------------------------|-------|------------------------------------------------------------------------------------------|
 | Dashboard.test.js      | 10    | Campaign list, empty state, create dialog, delete confirm, status badges, column headers |
 | Welcome.test.js        | 11    | Landing page, auth states, TEST MODE banner, beta banner, dark mode, footer links        |
-| CampaignCreate.test.js | 8     | Form fields, network options, default values, validation errors                          |
 | CampaignShow.test.js   | 11    | Campaign details, wallet address, claim URL, provisioning, backend mismatch, data table  |
 
 **Test environment:** jsdom with real Vuetify rendering. Only MeshJS (WASM) and

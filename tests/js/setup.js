@@ -2,7 +2,8 @@ import { config } from '@vue/test-utils';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
+import { reactive } from 'vue';
 
 // jsdom polyfills for Vuetify overlay/dialog support
 if (typeof window.visualViewport === 'undefined') {
@@ -163,7 +164,6 @@ globalThis.route = routeMock;
 
 config.global.mocks = {
     route: routeMock,
-    asset: vi.fn((path) => path),
     $page: {
         props: {
             auth: { user: null },
@@ -194,10 +194,17 @@ vi.mock('@inertiajs/vue3', async () => {
                 transaction_backend: 'null',
             },
         })),
+        // Reactive, like the real one. A plain object here looked harmless and was not:
+        // a component that changes a form field and re-renders on it works in the browser
+        // and does nothing in a test, so a test could only ever assert the first paint.
         useForm: vi.fn((initialData) => {
-            const form = { ...initialData, processing: false, errors: {} };
+            const form = reactive({ ...initialData, processing: false, errors: {} });
             form.post = vi.fn();
             form.put = vi.fn();
+            form.patch = vi.fn();
+            // get() is how a form asks a question rather than changes something: the
+            // onboarding panel sends its date range this way, as a partial reload.
+            form.get = vi.fn();
             form.delete = vi.fn();
             form.reset = vi.fn();
             return form;
@@ -207,6 +214,9 @@ vi.mock('@inertiajs/vue3', async () => {
             get: vi.fn(),
             delete: vi.fn(),
             visit: vi.fn(),
+            // Partial reloads: how a finished background job refreshes the part of the
+            // page it changed.
+            reload: vi.fn(),
         },
     };
 });
@@ -217,3 +227,8 @@ console.warn = (...args) => {
     if (typeof args[0] === 'string' && args[0].includes('[Vuetify]')) return;
     originalWarn(...args);
 };
+
+// The known-asset batcher is shared per network for a page's lifetime; each test is a
+// fresh page.
+import { resetKnownAssetBatchers } from '../../resources/js/utils/assetMetaBatcher.js';
+afterEach(() => resetKnownAssetBatchers());

@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Typography split, per brand/brand.json.
+ *
+ * The body carries `font-sans`, which is Inter: it has the weights Varela lacks and it is the
+ * only face in the stack containing the ada sign at U+20B3. Headings take the display stack so
+ * Varela, the brand face, still sets them. Without this rule Varela would not appear anywhere
+ * in the application, because `<body class="font-sans">` is the only place a family is set and
+ * everything else inherits from it.
+ *
+ * Vuetify components render inside the same body and inherit the same way.
+ *
+ * Varela ships weight 400 only, so a heading carrying an explicit weight utility would render
+ * as faux bold. Those headings are UI labels rather than brand display and opt back into Inter
+ * with an explicit `font-sans` class, which beats this base rule.
+ */
+@layer base {
+    h1, h2, h3, h4, h5, h6 {
+        font-family: theme('fontFamily.display');
+    }
+}

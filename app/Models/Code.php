@@ -13,7 +13,9 @@ class Code extends Model
 
     protected $fillable = [
         'campaign_id',
+        'partner_id',
         'code',
+        'reference',
         'perWallet',
         'uses',
         'lovelace',
@@ -25,6 +27,13 @@ class Code extends Model
         'created_at',
         'updated_at',
         'campaign_id',
+        // The integrator's own identifier for whoever a code-API code was made for
+        // (an attendee, a station, a claim slot). Nothing on the campaign page shows it,
+        // and it is not this application's to hand to anyone who can merely view the
+        // campaign. Reachable only through the endpoints that already deal in it by hand:
+        // CodeApiController::store(), which returns the code it names rather than
+        // the row, and the code's own attribute access everywhere else in the app.
+        'reference',
     ];
 
     protected $withCount = [
@@ -72,9 +81,43 @@ class Code extends Model
         return $this->belongsTo(Campaign::class);
     }
 
+    /**
+     * Who this code was generated for, if anybody.
+     *
+     * Assigned once, when the code is generated, and never afterwards. A code attributed to
+     * a partner after the fact was not necessarily handed out by them, and a denominator
+     * that can be edited after the numerator is visible is not a denominator.
+     *
+     * Not in $hidden, so the campaign page can name the partner a code was generated for:
+     * the name is the operator's own, not a claimant's.
+     */
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
+    }
+
     public function rewards(): HasMany
     {
         return $this->hasMany(Reward::class);
+    }
+
+    /**
+     * How many assets a claim on this code delivers.
+     *
+     * What a claim costs is priced against this, because it is what actually varies: a
+     * second asset drags extra minimum UTxO into the same output, and that is a fraction
+     * of a claim rather than another whole one.
+     *
+     * Minted NFTs count. They arrive in the same parcel and cost the same minimum UTxO as
+     * any other asset, whoever produced them.
+     */
+    public function assetCount(): int
+    {
+        $rewards = $this->relationLoaded('rewards')
+            ? $this->rewards->count()
+            : $this->rewards()->count();
+
+        return $rewards + (int) ($this->nmkr_count_nft ?? 0);
     }
 
     public function claims(): HasMany

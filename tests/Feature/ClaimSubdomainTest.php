@@ -40,9 +40,9 @@ class ClaimSubdomainTest extends TestCase
 
     public function test_claim_url_falls_back_when_domain_configured_but_route_missing(): void
     {
-        // Reproduces the staging RouteNotFoundException: on Vapor, routes are cached at
-        // BUILD time but CLAIM_DOMAIN is injected at RUNTIME, so config resolves the
-        // domain while claim.v1.short is absent from the (build-time) route table. Here
+        // Reproduces the staging RouteNotFoundException: where routes are cached at BUILD
+        // time but CLAIM_DOMAIN is injected at RUNTIME, config resolves the domain while
+        // claim.v1.short is absent from the (build-time) route table. Here
         // we set the config but deliberately do NOT register the route to simulate that
         // skew — claimUrl() must degrade to the long route, never throw.
         config()->set('cardano.claim_domain', 'claim.onbd.test');

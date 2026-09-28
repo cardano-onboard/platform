@@ -122,6 +122,8 @@ class KnownAssetControllerTest extends TestCase
             'network' => 'mainnet',
             'ticker' => 'HOSKY',
             'decimals' => 0,
+            // Its logo has been fetched from the registry, so the table answers alone.
+            'metadata' => ['logo_checked' => true],
         ]);
 
         $this->actingAs($user)
@@ -160,25 +162,25 @@ class KnownAssetControllerTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_store_persists_and_dedupes_known_asset(): void
+    /**
+     * The shared registry is written only from the chain's own registry. An endpoint that
+     * took a ticker, name, decimals and logo from whatever a signed-in user sent let one
+     * account change how a token appears on every other account's pages.
+     */
+    public function test_no_user_can_write_to_the_shared_registry(): void
     {
         $user = User::factory()->create();
-        $payload = [
-            'policy_id' => 'a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235',
-            'asset_name' => '484f534b59',
-            'ticker' => 'HOSKY',
-            'name' => 'HOSKY Token',
-            'decimals' => 0,
-            'network' => 'mainnet',
-        ];
 
-        $this->actingAs($user)->postJson(route('known-assets.store'), $payload)->assertCreated();
-        // Same subject again => update, not a duplicate row.
         $this->actingAs($user)
-            ->postJson(route('known-assets.store'), array_merge($payload, ['name' => 'HOSKY (updated)']))
-            ->assertOk();
+            ->postJson('/known-assets', [
+                'policy_id' => 'a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235',
+                'asset_name' => '484f534b59',
+                'ticker' => 'SCAM',
+                'decimals' => 6,
+                'network' => 'mainnet',
+            ])
+            ->assertStatus(405);
 
-        $this->assertDatabaseCount('known_assets', 1);
-        $this->assertDatabaseHas('known_assets', ['ticker' => 'HOSKY', 'name' => 'HOSKY (updated)']);
+        $this->assertDatabaseCount('known_assets', 0);
     }
 }
