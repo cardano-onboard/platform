@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\KnownAsset;
 use App\Models\Reward;
+use App\Services\AssetDisplay;
 use App\Services\KoiosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,9 @@ use Illuminate\Validation\Rule;
 
 class KnownAssetController extends Controller
 {
+    /** Assets one lookupMany request may ask about. */
+    public const BATCH_LIMIT = 50;
+
     public function __construct(private readonly KoiosService $koios) {}
 
     /**
@@ -57,13 +61,48 @@ class KnownAssetController extends Controller
     }
 
     /**
-     * Resolve asset metadata from Koios by policy id + asset name (hex).
+     * Display metadata for up to BATCH_LIMIT assets in one request, keyed by subject
+     * (policy id + asset name hex), null for an asset Koios does not know.
+     *
+     * The campaign page arrives with whatever is already cached (AssetDisplay::cached) and
+     * asks here only for the rest. One request per asset, each waiting on its own Koios
+     * call, held every PHP worker at once on a campaign with a distinct NFT per code and
+     * timed out the host for everybody.
+     */
+    public function lookupMany(Request $request, AssetDisplay $assets): JsonResponse
+    {
+        $validated = $request->validate([
+            'network' => ['nullable', Rule::in(['mainnet', 'preprod', 'preview'])],
+            'assets' => ['required', 'array', 'min:1', 'max:'.self::BATCH_LIMIT],
+            // Each pair is checked by AssetDisplay::wellFormed, which leaves a malformed one
+            // out of the Koios call and out of the answer rather than refusing the batch:
+            // one stored reward with an odd-length name would otherwise fail the other 49
+            // on every load.
+            'assets.*.policy' => ['required', 'string', 'max:128'],
+            'assets.*.asset_name' => ['nullable', 'string', 'max:128'],
+        ]);
+
+        $pairs = array_map(
+            fn (array $asset) => [$asset['policy'], $asset['asset_name'] ?? ''],
+            $validated['assets'],
+        );
+
+        return response()->json((object) $assets->resolve($pairs, $validated['network'] ?? 'mainnet'));
+    }
+
+    /**
+     * Resolve one asset's metadata by policy id + asset name (hex), for the reward form.
+     *
+     * Registry-first. Anything else is read from Koios and cached; only an off-chain
+     * registry token is written to known_assets, so CIP-0068 and CIP-0025 metadata never
+     * become permanent and nothing reaches the shared table except from the chain's
+     * registry.
      */
     public function lookup(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'policy' => ['required', 'string', 'size:56', 'regex:/^[0-9a-fA-F]+$/'],
-            'asset_name' => ['nullable', 'string', 'regex:/^[0-9a-fA-F]*$/'],
+            'asset_name' => ['nullable', 'string', 'max:64', 'regex:/^(?:[0-9a-fA-F]{2})*$/'],
             'network' => ['nullable', Rule::in(['mainnet', 'preprod', 'preview'])],
         ]);
 
@@ -71,76 +110,28 @@ class KnownAssetController extends Controller
         $assetName = strtolower($validated['asset_name'] ?? '');
         $network = $validated['network'] ?? 'mainnet';
 
-        // Registry-first: serve from our synced table when we know the token.
         $known = KnownAsset::where('policy_id', $policy)
             ->where('asset_name', $assetName)
             ->where('network', $network)
             ->first();
 
-        if ($known) {
+        if ($known && AssetDisplay::logoChecked($known)) {
             return response()->json($known);
         }
 
-        // Fallback: query Koios directly for a token we haven't cached yet, then persist
-        // it so subsequent lookups are served locally.
         $info = $this->koios->assetInfo($policy, $assetName, $network);
 
         if (! $info) {
-            return response()->json(['message' => 'Asset not found in the registry for this network.'], 404);
+            return $known
+                ? response()->json($known)
+                : response()->json(['message' => 'Asset not found on this network.'], 404);
         }
 
-        $known = KnownAsset::updateOrCreate(
-            [
-                'policy_id' => $info['policy_id'] ?? $policy,
-                'asset_name' => $info['asset_name'] ?? $assetName,
-                'network' => $network,
-            ],
-            [
-                'ticker' => $info['ticker'] ?? null,
-                'name' => $info['name'] ?? null,
-                'fingerprint' => $info['fingerprint'] ?? null,
-                'decimals' => $info['decimals'] ?? 0,
-                'logo' => $info['logo'] ?? null,
-                'description' => $info['description'] ?? null,
-            ]
-        );
-
-        return response()->json($known);
-    }
-
-    /**
-     * Persist a known asset to the shared registry (deduped on policy + asset + network).
-     */
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'policy_id' => ['required', 'string', 'size:56', 'regex:/^[0-9a-fA-F]+$/'],
-            'asset_name' => ['nullable', 'string', 'regex:/^[0-9a-fA-F]*$/'],
-            'ticker' => 'nullable|string|max:32',
-            'name' => 'nullable|string|max:255',
-            'fingerprint' => 'nullable|string|max:64',
-            'decimals' => 'nullable|integer|min:0|max:32',
-            'logo' => 'nullable|string',
-            'description' => 'nullable|string|max:1000',
-            'network' => ['nullable', Rule::in(['mainnet', 'preprod', 'preview'])],
-        ]);
-
-        $asset = KnownAsset::updateOrCreate(
-            [
-                'policy_id' => strtolower($validated['policy_id']),
-                'asset_name' => strtolower($validated['asset_name'] ?? ''),
-                'network' => $validated['network'] ?? 'mainnet',
-            ],
-            [
-                'ticker' => $validated['ticker'] ?? null,
-                'name' => $validated['name'] ?? null,
-                'fingerprint' => $validated['fingerprint'] ?? null,
-                'decimals' => $validated['decimals'] ?? 0,
-                'logo' => $validated['logo'] ?? null,
-                'description' => $validated['description'] ?? null,
-            ]
-        );
-
-        return response()->json($asset, $asset->wasRecentlyCreated ? 201 : 200);
+        return response()->json(AssetDisplay::remember($info, $network) ?? [
+            'policy_id' => $info['policy_id'] ?? $policy,
+            'asset_name' => $info['asset_name'] ?? $assetName,
+            'fingerprint' => $info['fingerprint'] ?? null,
+            'description' => $info['description'] ?? null,
+        ] + AssetDisplay::display($info));
     }
 }

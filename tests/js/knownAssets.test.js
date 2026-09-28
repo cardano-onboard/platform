@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { knownAssetLabel, assetToToken, toBaseUnits } from '../../resources/js/utils/knownAssets.js';
+import { knownAssetLabel, assetToToken, toBaseUnits, fromBaseUnits } from '../../resources/js/utils/knownAssets.js';
 
 describe('knownAssets utils', () => {
     const hosky = {
@@ -46,4 +46,30 @@ describe('knownAssets utils', () => {
         expect(toBaseUnits(1, 0)).toBe(1);
         expect(toBaseUnits('', 6)).toBe(0); // non-numeric guard
     });
+
+    describe('fromBaseUnits', () => {
+        it('shifts a quantity by the token decimals', () => {
+            expect(fromBaseUnits('251000000', 6)).toBe('251');
+            expect(fromBaseUnits('1500000', 6)).toBe('1.5');
+            expect(fromBaseUnits('5', 6)).toBe('0.000005');
+        });
+
+        it('uses the locale decimal point alongside the locale grouping', () => {
+            expect(fromBaseUnits('1234500000', 6, 'en-US')).toBe('1,234.5');
+            expect(fromBaseUnits('1234500000', 6, 'de-DE')).toBe('1.234,5');
+        });
+
+        it('leaves a token without decimals whole', () => {
+            expect(fromBaseUnits('1000', 0)).toBe((1000).toLocaleString());
+            expect(fromBaseUnits('7', undefined)).toBe('7');
+        });
+
+        // A summed quantity can pass 2^53, where a float would round the last digits.
+        it('keeps every digit of a quantity too large for a float', () => {
+            expect(fromBaseUnits('9007199254740993123', 3)).toBe(
+                `${BigInt('9007199254740993').toLocaleString()}.123`,
+            );
+        });
+    });
 });
+

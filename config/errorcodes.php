@@ -5,6 +5,11 @@ return [
         'code' => 400,
         'status' => 'invalidaddress',
     ],
+    'ERROR_ADDRESS_TYPE' => [
+        'code' => 400,
+        'status' => 'invalidaddress',
+        'message' => 'Claims need a base address with a staking key. Enterprise, pointer and Byron addresses are not accepted.',
+    ],
     'ERROR_MISSING_CODE' => [
         'code' => 400,
         'status' => 'missingcode',

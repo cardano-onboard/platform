@@ -25,7 +25,9 @@ class CampaignControllerTest extends TestCase
 
     public function test_guest_cannot_access_campaigns(): void
     {
-        $this->get(route('campaigns.create'))->assertRedirect('/login');
+        $campaign = $this->createCampaignWithWallet(User::factory()->create());
+
+        $this->get(route('campaigns.show', $campaign))->assertRedirect('/login');
     }
 
     public function test_authenticated_user_can_create_campaign(): void
@@ -75,6 +77,52 @@ class CampaignControllerTest extends TestCase
                 'network' => 'invalid_network',
             ])
             ->assertSessionHasErrors(['network']);
+    }
+
+    public function test_campaign_creation_accepts_an_optional_code_cap(): void
+    {
+        Http::fake(['*' => Http::response([
+            'status' => 'ok',
+            'data' => [null, ['bucketAddress' => 'addr_test1abc', 'campaignId' => 'test-id']],
+        ])]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('campaigns.store'), [
+                'name' => 'Test Campaign',
+                'description' => 'A test campaign',
+                'start_date' => now()->toDateString(),
+                'end_date' => now()->addMonth()->toDateString(),
+                'one_per_wallet' => false,
+                'network' => 'preprod',
+                'max_codes' => 50,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('campaigns', [
+            'name' => 'Test Campaign',
+            'max_codes' => 50,
+        ]);
+    }
+
+    public function test_a_campaigns_code_cap_can_be_raised_or_lowered_on_update(): void
+    {
+        $user = User::factory()->create();
+        $campaign = $this->createCampaignWithWallet($user, ['max_codes' => 10]);
+
+        $this->actingAs($user)
+            ->put(route('campaigns.update', $campaign), [
+                'name' => $campaign->name,
+                'description' => $campaign->description,
+                'start_date' => now()->toDateString(),
+                'end_date' => now()->addMonth()->toDateString(),
+                'network' => $campaign->network,
+                'max_codes' => 25,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(25, $campaign->fresh()->max_codes);
     }
 
     public function test_user_can_view_own_campaign(): void

@@ -53,8 +53,8 @@ class QrStickerService
     }
 
     /**
-     * PNG (raster) output requires the GD extension. Present on the Vapor/Lambda
-     * runtime but not guaranteed on every host, so the UI gates the option on this.
+     * PNG (raster) output requires the GD extension, which is not compiled into every
+     * PHP runtime, so the UI gates the option on this.
      */
     public static function pngSupported(): bool
     {

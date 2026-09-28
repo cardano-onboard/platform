@@ -37,4 +37,20 @@ interface TransactionBackend
      * Get the live UTxO balance for an address.
      */
     public function getBalance(string $address, string $network): array;
+
+    /**
+     * The protocol parameters this network is currently running.
+     *
+     * Only what the application actually uses is promised. `coins_per_utxo_byte` decides
+     * the minimum ADA every output must carry and is a governance-settable parameter, so
+     * reading it beats assuming it. `source` says where the figure came from, so a page
+     * showing a minimum can say whether it is live or a fallback rather than presenting a
+     * default as though it had been fetched.
+     *
+     * Implementations must not throw. A backend that cannot reach a chain returns the
+     * configured fallback with a source saying so.
+     *
+     * @return array{coins_per_utxo_byte: int, source: string}
+     */
+    public function protocolParameters(string $network): array;
 }

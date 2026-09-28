@@ -5,7 +5,7 @@
 | Field                    | Value                                                                    |
 |--------------------------|--------------------------------------------------------------------------|
 | **Date**                 | 2026-04-05 (load + ZAP); 2026-06-09 (cross-user authorization additions) |
-| **Version**              | v1.1.0-beta (milestone-2 branch, pre-merge to staging)                   |
+| **Version**              | v1.1.0-beta                                                              |
 | **Assessed By**          | Onboard.Ninja Development Team                                           |
 | **Target (SaaS)**        | https://beta.onbd.io                                                     |
 | **Target (Self-Hosted)** | Docker stack (localhost:8081)                                            |

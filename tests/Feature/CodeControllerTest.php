@@ -14,9 +14,9 @@ class CodeControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createCampaignWithWallet(User $user): Campaign
+    private function createCampaignWithWallet(User $user, array $overrides = []): Campaign
     {
-        $campaign = Campaign::factory()->for($user)->create();
+        $campaign = Campaign::factory()->for($user)->create($overrides);
         Wallet::factory()->for($campaign)->create();
 
         return $campaign;
@@ -187,5 +187,37 @@ class CodeControllerTest extends TestCase
         $response->assertRedirect()
             ->assertSessionHas('message', fn ($m) => str_contains((string) $m, 'has ended'));
         Bus::assertNotDispatched(ProcessUploadedCodes::class);
+    }
+
+    public function test_a_batch_past_the_campaigns_code_cap_is_refused_whole(): void
+    {
+        $user = User::factory()->create();
+        $campaign = $this->createCampaignWithWallet($user, ['max_codes' => 3]);
+
+        $this->actingAs($user)->post(route('codes.store'), [
+            'campaign_id' => $campaign->id,
+            'lovelace' => 2000000,
+            'perWallet' => 1,
+            'uses' => 1,
+            'quantity' => 4,
+        ])->assertSessionHasErrors(['max_codes']);
+
+        $this->assertDatabaseCount('codes', 0);
+    }
+
+    public function test_a_batch_that_fits_under_the_campaigns_code_cap_is_created(): void
+    {
+        $user = User::factory()->create();
+        $campaign = $this->createCampaignWithWallet($user, ['max_codes' => 5]);
+
+        $this->actingAs($user)->post(route('codes.store'), [
+            'campaign_id' => $campaign->id,
+            'lovelace' => 2000000,
+            'perWallet' => 1,
+            'uses' => 1,
+            'quantity' => 3,
+        ])->assertRedirect();
+
+        $this->assertDatabaseCount('codes', 3);
     }
 }

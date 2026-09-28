@@ -1,8 +1,10 @@
 <script setup>
 import { router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useTheme } from 'vuetify';
 import LogoSvg from '@/Components/LogoSvg.vue';
+import DeploymentNoticeBar from '@/Components/DeploymentNoticeBar.vue';
+import BetaNoticeBar from '@/Components/BetaNoticeBar.vue';
 
 // The self-hosted build ships a reduced route table — profile management and
 // the marketing pages exist only on the SaaS deployment. route() throws on an
@@ -19,8 +21,10 @@ function toggleTheme() {
 }
 
 const page = usePage();
-const betaBanner = ref(page.props.beta_banner ?? false);
-const betaDismissed = ref(false);
+
+// The operator's view of the whole deployment. Guarded on the flag as well as the route,
+// because the route exists for everyone signed in and the gate is what refuses them.
+const isAdmin = computed(() => page.props.auth?.user?.is_admin === true);
 
 function logout() {
     router.post(route('logout'));
@@ -29,6 +33,7 @@ function logout() {
 
 <template>
     <v-app>
+        <DeploymentNoticeBar />
         <v-system-bar
             v-if="page.props.transaction_backend === 'null'"
             color="error"
@@ -38,19 +43,7 @@ function logout() {
             <v-icon icon="mdi-flask-outline" class="me-2" size="small" />
             TEST MODE — No real transactions will be sent. Do NOT send tokens to any displayed wallet addresses.
         </v-system-bar>
-        <v-system-bar
-            v-if="betaBanner && !betaDismissed"
-            color="warning"
-            class="text-center"
-            height="32"
-        >
-            <v-icon icon="mdi-alert" class="me-2" size="small" />
-            This system is currently in beta. Features may be incomplete or subject to change.
-            <v-spacer />
-            <v-btn icon size="x-small" variant="text" @click="betaDismissed = true">
-                <v-icon icon="mdi-close" size="small" />
-            </v-btn>
-        </v-system-bar>
+        <BetaNoticeBar />
         <v-app-bar flat density="comfortable" color="surface" elevation="1">
             <div class="d-flex align-center ms-4 me-4">
                 <a :href="route('dashboard')" class="d-flex align-center text-decoration-none">
@@ -83,6 +76,12 @@ function logout() {
                         title="Profile"
                         v-if="hasRoute('profile.edit')"
                         :href="route('profile.edit')"
+                    />
+                    <v-list-item
+                        prepend-icon="mdi-chart-box-outline"
+                        title="Platform Metrics"
+                        v-if="isAdmin && hasRoute('admin.metrics')"
+                        :href="route('admin.metrics')"
                     />
                     <v-divider />
                     <v-list-item

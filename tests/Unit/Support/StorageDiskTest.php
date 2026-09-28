@@ -22,7 +22,7 @@ class StorageDiskTest extends TestCase
 
     public function test_an_s3_disk_without_a_bucket_falls_back_instead_of_type_erroring(): void
     {
-        // The production failure: Laravel Cloud had not injected AWS_BUCKET, so the disk
+        // The production failure: the host had not injected AWS_BUCKET, so the disk
         // resolved with bucket => null and Flysystem's adapter threw a TypeError, which
         // reached the user as a bare 500 on the QR download.
         config(['filesystems.disks.private' => [

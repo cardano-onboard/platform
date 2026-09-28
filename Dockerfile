@@ -9,13 +9,19 @@ COPY composer.json composer.lock ./
 
 # Install production dependencies only (no dev tools needed in the image)
 # --no-scripts: skip post-autoload-dump (artisan not available yet)
+# --ignore-platform-reqs: this stage downloads packages and writes an autoloader, and runs
+#   none of the code it is downloading. The composer image carries no bcmath and no gd, so
+#   the platform check here fails on extensions the runtime stage installs a few lines down
+#   and the whole build stops over nothing. The check is not dropped, it is moved: the
+#   runtime stage runs check-platform-reqs where the extensions actually have to be.
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
     --prefer-dist \
     --optimize-autoloader \
-    --no-scripts
+    --no-scripts \
+    --ignore-platform-reqs
 
 # Copy the rest of the source so autoload paths resolve correctly
 COPY . .
@@ -112,6 +118,12 @@ COPY --from=composer --chown=www-data:www-data /app/vendor ./vendor
 
 # Replace public/build with the compiled assets from Stage 2
 COPY --from=node --chown=www-data:www-data /app/public/build ./public/build
+
+# The platform check, run where the extensions are. Every ext- requirement in composer.json
+# and in every package under it has to be present on this image, or the build stops here
+# rather than in a container that starts and then fails on the first request that needs one.
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+RUN composer check-platform-reqs --no-dev --no-interaction
 
 # ---------------------------------------------------------------------------
 # Directory permissions

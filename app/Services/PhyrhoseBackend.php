@@ -4,11 +4,14 @@ namespace App\Services;
 
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
+use App\Support\MinUtxo;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PhyrhoseBackend implements TransactionBackend
 {
+    public function __construct(private ?KoiosService $koios = null) {}
+
     public function createBucket(Campaign $campaign, string $network): array
     {
         $phyrhose = $this->client($network);
@@ -203,6 +206,37 @@ class PhyrhoseBackend implements TransactionBackend
         }
 
         return [];
+    }
+
+    /**
+     * Read from Koios rather than from Phyrhose, which submits transactions and does not
+     * publish protocol parameters. The chain is the same chain either way, and a wrong
+     * coins-per-byte here does not produce a wrong transaction, only a wrong warning.
+     *
+     * A failed lookup falls back to the configured default and says so. Refusing to price
+     * a code because a third-party query layer is down would be a worse answer than a
+     * slightly stale coefficient.
+     */
+    public function protocolParameters(string $network): array
+    {
+        $params = $this->koios()->protocolParameters($network);
+
+        if ($params === null) {
+            return [
+                'coins_per_utxo_byte' => MinUtxo::defaultCoinsPerUtxoByte(),
+                'source' => 'default',
+            ];
+        }
+
+        return [
+            'coins_per_utxo_byte' => $params['coins_per_utxo_byte'],
+            'source' => 'koios',
+        ];
+    }
+
+    private function koios(): KoiosService
+    {
+        return $this->koios ??= app(KoiosService::class);
     }
 
     private function client(string $network)

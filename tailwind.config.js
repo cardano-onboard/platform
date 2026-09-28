@@ -13,7 +13,11 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Varela', 'Figtree', ...defaultTheme.fontFamily.sans],
+                // Inter carries body text: it has the weights Varela lacks and the ada
+                // sign at U+20B3, which neither Varela nor Figtree contains.
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                // Varela is the brand face and sets headings only. See brand/brand.json.
+                display: ['Varela', 'Inter', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 brand: {

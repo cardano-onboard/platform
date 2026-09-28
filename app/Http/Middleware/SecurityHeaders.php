@@ -55,8 +55,8 @@ class SecurityHeaders
             return null;
         }
 
-        // When the built assets are served from a separate origin — e.g. the Vapor /
-        // CloudFront asset domain exposed via ASSET_URL — 'self' no longer covers the
+        // When the built assets are served from a separate origin — a CDN or object-store
+        // asset domain exposed via ASSET_URL — 'self' no longer covers the
         // app's own JS/CSS/font bundles, so the browser blocks them. Allow that origin
         // across the asset-loading directives. No-op when ASSET_URL is unset or relative
         // (same-origin), so local/Docker deployments are unaffected.

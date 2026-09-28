@@ -26,6 +26,7 @@ export default defineConfig({
           { text: 'Coverage Report', link: '/coverage-report' },
           { text: 'Security & Load Testing', link: '/security-and-load-testing' },
           { text: 'Brand & Theme', link: '/brand-style-guide' },
+          { text: 'Social Preview Cards', link: '/social-preview' },
         ],
       },
     ],
@@ -64,6 +65,7 @@ export default defineConfig({
           items: [
             { text: 'API reference', link: '/guide/api-reference' },
             { text: 'Editions', link: '/guide/editions' },
+            { text: 'Social preview cards', link: '/social-preview' },
           ],
         },
       ],

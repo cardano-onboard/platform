@@ -52,6 +52,11 @@ class ProcessClaims implements ShouldBeUnique, ShouldQueue
         $unfinished_claims = $campaign->claims()
             ->with(['code.rewards'])
             ->whereNull('transaction_id')
+            // A claim held for credit is accepted and recorded but not sent. Sending it
+            // would deliver a reward the campaign has not paid for, and on the dollar path
+            // that is network fees and minimum UTxO out of our own pocket. It is released
+            // when the operator tops up, oldest first.
+            ->whereNull('held_reason')
             ->get();
 
         Log::info('ProcessClaims: found unfinished claims', [
@@ -71,6 +76,13 @@ class ProcessClaims implements ShouldBeUnique, ShouldQueue
         ]);
 
         $recipients = [];
+
+        // What each claim is being sent, kept beside it so the claim can record it once the
+        // backend accepts the payment. Built here rather than read back afterwards, because
+        // the code is free to change between now and the next run of this job and the
+        // question the record answers is what went out, not what is configured.
+        $rewards = [];
+
         foreach ($unfinished_claims as $claim) {
             $claimed_code = [
                 'pooCode' => $claim->code->code,
@@ -79,11 +91,22 @@ class ProcessClaims implements ShouldBeUnique, ShouldQueue
                 'tokens' => [],
             ];
 
+            $rewards[$claim->id] = [
+                'lovelace' => (int) $claim->code->lovelace,
+                'tokens' => [],
+            ];
+
             foreach ($claim->code->rewards as $token) {
                 $claimed_code['tokens'][] = [
                     'policy' => $token->policy_hex,
                     'name' => $token->asset_hex,
                     'amount' => $token->quantity,
+                ];
+
+                $rewards[$claim->id]['tokens'][] = [
+                    'policy' => $token->policy_hex,
+                    'asset' => $token->asset_hex,
+                    'quantity' => (int) $token->quantity,
                 ];
             }
 
@@ -139,6 +162,15 @@ class ProcessClaims implements ShouldBeUnique, ShouldQueue
             $purchaseId = $ids[$claim->code->code][$claim->address] ?? null;
             if ($purchaseId) {
                 $claim->transaction_id = $purchaseId;
+                // Stamped only for a claim the backend actually took. A submission that
+                // produced no purchase id sent nothing, and recording a reward against it
+                // would put a payment in the record that never happened. Force-filled
+                // because these are money columns and nothing a claimant sends may reach
+                // them.
+                $claim->forceFill([
+                    'reward_lovelace' => $rewards[$claim->id]['lovelace'] ?? null,
+                    'reward_tokens' => $rewards[$claim->id]['tokens'] ?? [],
+                ]);
                 $claim->save();
                 $updated_count++;
             } else {

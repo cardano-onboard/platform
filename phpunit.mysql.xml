@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    CI-only PHPUnit config that runs the suite against MySQL instead of the default
-    SQLite (phpunit.xml). MySQL's strict mode (config/database.php `mysql.strict = true`)
-    enforces ONLY_FULL_GROUP_BY and other rules that match the RDS/Vapor production DB but
-    that SQLite silently ignores — so this catches MySQL-only failures (e.g. aggregate +
-    $withCount GROUP BY violations) before they reach staging.
-
-    Connection details (host/port/database/user/password) are taken from the environment
-    so CI and local runs can each point at their own MySQL. Run with:
-        php artisan test -c phpunit.mysql.xml
+    The MySQL test configuration CI runs (php artisan test -c phpunit.mysql.xml). It
+    excludes the auth test files and the saas-only group, which cover surfaces this
+    edition does not ship.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
@@ -21,8 +15,19 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <exclude>tests/Feature/Auth/RegistrationTest.php</exclude>
+            <exclude>tests/Feature/Auth/PasswordResetTest.php</exclude>
+            <exclude>tests/Feature/Auth/EmailVerificationTest.php</exclude>
+            <exclude>tests/Feature/Auth/PasswordConfirmationTest.php</exclude>
+            <exclude>tests/Feature/Auth/PasswordUpdateTest.php</exclude>
+            <exclude>tests/Feature/ProfileTest.php</exclude>
         </testsuite>
     </testsuites>
+    <groups>
+        <exclude>
+            <group>saas-only</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>
@@ -34,9 +39,25 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Pinned, as phpunit.xml pins it. Tests that assert a redirect target compare
+             against the application URL, and without this the run inherits whatever a
+             developer has in .env: a tunnel address makes them fail for a reason that has
+             nothing to do with the database being exercised. -->
+        <env name="APP_URL" value="http://localhost"/>
         <env name="APP_KEY" value="base64:lI6gNEZbi2sItf0uOYVt5Ybi5L2N711OmNIkQNcIZtA="/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="ALLOWED_NETWORKS" value="preprod,preview,mainnet"/>
+        <env name="CLAIM_CLIENT_BREAKDOWN_FLOOR" value="10"/>
+        <env name="PRICE_PER_EXTRA_ASSET_MICRO" value="250000"/>
         <env name="CACHE_DRIVER" value="array"/>
+        <!-- Pinned so the suite does not inherit a developer's transaction backend. With
+             a real one bound, anything that reads a protocol parameter reaches for a
+             third-party query layer during a unit test. -->
+        <env name="TRANSACTION_BACKEND" value="null"/>
+        <!-- Pinned for the same reason: the minimum-UTxO figures asserted in tests are
+             mainnet's coefficient, not whatever a machine happens to have configured. -->
+        <env name="COINS_PER_UTXO_BYTE" value="4310"/>
+        <env name="MIN_UTXO_HEADROOM_LOVELACE" value="1000000"/>
         <!-- force="true" so this wins over any inherited DB_CONNECTION in the environment. -->
         <env name="DB_CONNECTION" value="mysql" force="true"/>
         <env name="MAIL_MAILER" value="array"/>

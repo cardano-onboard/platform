@@ -69,4 +69,25 @@ class SyncKnownAssetsTest extends TestCase
         $this->assertDatabaseHas('known_assets', ['ticker' => 'USDM', 'decimals' => 6]);
         $this->assertDatabaseMissing('known_assets', ['ticker' => 'OLD']);
     }
+
+    // A lookup marks a row once it has fetched the logo; a sync must not undo that.
+    public function test_sync_keeps_the_mark_a_lookup_left_on_a_row(): void
+    {
+        KnownAsset::factory()->create([
+            'policy_id' => 'c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad',
+            'asset_name' => '0014df105553444d',
+            'network' => 'mainnet',
+            'logo' => 'iVBOR',
+            'metadata' => ['logo_checked' => true],
+        ]);
+
+        Http::fakeSequence()->push($this->registryPage())->push([]);
+
+        $this->artisan('assets:sync-registry', ['--network' => 'mainnet'])->assertSuccessful();
+
+        $row = KnownAsset::where('asset_name', '0014df105553444d')->first();
+        $this->assertTrue($row->metadata['logo_checked']);
+        $this->assertSame('iVBOR', $row->logo);
+        $this->assertSame(6, (int) $row->decimals);
+    }
 }

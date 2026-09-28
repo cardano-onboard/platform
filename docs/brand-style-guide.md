@@ -19,13 +19,17 @@ logo usage, and the application theme tokens.
 |-------|------|-------|
 | Primary logo (SVG) | `resources/js/img/logo.svg` | Preferred for in-app use (scalable) |
 | Primary logo (PNG) | `resources/js/img/logo.png` | Raster fallback |
-| Inline logo component | `resources/js/Components/LogoSvg.vue` | "ONBOARD" wordmark + ninja mark, rendered monochrome in brand orange `#FE5B24` |
+| Inline logo component | `resources/js/Components/LogoSvg.vue` | "ONBOARD" wordmark + ninja mark. Two-tone: the six letterforms are brand orange `#FE5B24`, the ninja face inherits `currentColor` so it follows the surrounding text |
 | Favicon | `public/favicon.ico`, `public/favicon.png` | Browser tab / bookmark icon |
 
 **Usage**
 - Prefer `LogoSvg.vue` or `logo.svg` over the PNG wherever vector rendering is possible.
-- The inline logo is single-color brand orange (`#FE5B24`); keep it on backgrounds with
-  sufficient contrast (white/light or the dark surface `#1E1E1E`).
+- The inline logo is two-tone and adapts: the letters stay brand orange (`#FE5B24`) and the
+  ninja face takes `currentColor`. Keep it on backgrounds with sufficient contrast
+  (white/light or the dark surface `#1E1E1E`), and avoid mid-tone backgrounds where the
+  orange loses contrast.
+- Third parties needing standalone files should be pointed at `brand/assets/`, which carries
+  fixed-colour variants for light, dark and one-colour printing.
 - Do not recolor, stretch, or add effects to the wordmark.
 
 ---
@@ -110,22 +114,43 @@ Two themes are registered in `resources/js/app.js`. The **default is `onboard_da
 
 ## Typography
 
+Two families, with distinct jobs. See `brand/brand.json` for the same values in
+machine-readable form.
+
 | Role | Family | Weights | Source |
 |------|--------|---------|--------|
-| Primary | **Varela** | 400 | bunny.net |
-| Secondary / fallback | **Figtree** | 400, 500, 600 | bunny.net |
+| Headings and display | **Varela** | 400 | bunny.net |
+| Body, UI, everything else | **Inter** | 400, 500, 600, 700 | bunny.net |
 | System fallback | Tailwind default sans stack | — | local |
 
-- Tailwind font stack (`tailwind.config.js`): `['Varela', 'Figtree', ...defaultTheme.fontFamily.sans]`,
-  applied via the `font-sans` utility.
-- Fonts are loaded in `resources/views/app.blade.php` via bunny.net with `preconnect`:
-  ```html
-  <link rel="preconnect" href="https://fonts.bunny.net">
-  <link href="https://fonts.bunny.net/css?family=varela:400&display=swap" rel="stylesheet" />
-  <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-  ```
-- **Varela ships a single weight (400).** Use Figtree (400/500/600) where you need
-  medium/semibold emphasis.
+Tailwind stacks (`tailwind.config.js`):
+
+```js
+sans:    ['Inter', ...defaultTheme.fontFamily.sans],           // font-sans
+display: ['Varela', 'Inter', ...defaultTheme.fontFamily.sans], // font-display
+```
+
+Fonts are loaded in `resources/views/app.blade.php` via bunny.net with `preconnect`:
+
+```html
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=varela:400&display=swap" rel="stylesheet" />
+<link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+```
+
+- `<body class="font-sans">` in `app.blade.php` is the only place a family is set, and
+  everything inherits from it. A base rule in `resources/css/app.css` gives `h1` through `h6`
+  the display stack, which is the only reason Varela appears at all. **If you remove that
+  rule, the brand face disappears from the entire application.**
+- **Varela ships a single weight (400).** It is a heading face. Anywhere needing 500 or 600
+  is body text and belongs in Inter.
+- **Inter is the only face here containing the ada sign, U+20B3.** Verified against Inter v20
+  (2849 glyphs), Varela v17 (531 glyphs, no U+20B3) and the Figtree latin subset bunny.net
+  used to serve (222 glyphs, no U+20B3). Write the symbol; do not spell out ADA in its place.
+- Inter is also what the project writes its documents in, so written material and the product
+  match.
+- **Figtree was removed.** It existed to supply the weights Varela lacks, and Inter supplies
+  those plus the ada sign, so it no longer earned a request.
 
 ---
 
@@ -156,3 +181,14 @@ only sanctioned place raw brand hex appears.
   specifically need the darkest step.
 - This guide ships with the public DIY platform repo (via `scripts/publish-platform.sh`),
   so it doubles as brand guidance for self-hosters and contributors.
+
+---
+
+## Related
+
+`brand/` holds the outward-facing kit: standalone logo files in fixed colours, naming rules,
+approved product descriptions, and `brand.json` with the same values in machine-readable form.
+It is written for someone outside the project who needs to refer to Onboard.Ninja correctly.
+
+This document is the implementation reference. Both ship to the public repo, and both change
+when a brand value changes.

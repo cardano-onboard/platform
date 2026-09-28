@@ -7,11 +7,12 @@ import LogoSvg from '@/Components/LogoSvg.vue';
 // as the "built on Cardano" attribution — not as decoration.
 import cardanoStarburst from '@/img/cardano/starburst-white.svg';
 
-// Project marks live in resources/js/img/brands (originals in
-// .claude/marketing-docs/brands). The rasters are square avatars carrying their
-// own backgrounds, so they render as tiles on the light Paper band; WayUp ships a
-// wordmark filled dark for the same reason. Every project currently ships a mark;
-// the `mono` glyph fallback is kept for the next one that doesn't.
+// Project marks live in resources/js/img/brands; the source files they were
+// exported from are kept outside this repo. The rasters are square avatars
+// carrying their own backgrounds, so they render as tiles on the light Paper
+// band; WayUp ships a wordmark filled dark for the same reason. Every project
+// currently ships a mark; the `mono` glyph fallback is kept for the next one
+// that doesn't.
 import fetchMark from '@/img/brands/fetch.jpg';
 import steelswapMark from '@/img/brands/steelswap.jpg';
 import strikeMark from '@/img/brands/strike.jpg';
@@ -143,9 +144,9 @@ function tryStakeDeepLink() {
 
 // --- Content -------------------------------------------------------------
 // App URLs confirmed by the marketing owner 2026-07-25 — these are the same
-// links printed on the Rare Evo trifold (.scratch/rare-evo/trifold.html), so
-// change both together. `mark` is a bundled logo; `mono` is the fallback glyph
-// for projects that haven't supplied one yet.
+// links printed on the Rare Evo trifold handout, so change both together.
+// `mark` is a bundled logo; `mono` is the fallback glyph for projects that
+// haven't supplied one yet.
 const categories = [
     {
         key: 'swap',

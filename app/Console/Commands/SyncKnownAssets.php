@@ -99,7 +99,10 @@ class SyncKnownAssets extends Command
                 KnownAsset::upsert(
                     $batch,
                     ['policy_id', 'asset_name', 'network'],
-                    ['ticker', 'name', 'decimals', 'description', 'metadata', 'updated_at']
+                    // metadata is written on insert only: a lookup marks a row there once it
+                    // has fetched the logo (AssetDisplay::LOGO_CHECKED), and replacing it on
+                    // every run would drop that mark four times a day.
+                    ['ticker', 'name', 'decimals', 'description', 'updated_at']
                 );
                 $upserted += count($batch);
             }

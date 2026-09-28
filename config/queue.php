@@ -26,6 +26,16 @@ return [
     |
     | Drivers: "sync", "database", "beanstalkd", "sqs", "redis", "null"
     |
+    | "retry_after" is the reservation window. A worker holds a job for that many
+    | seconds, and once the window passes the message is handed to a second worker
+    | whether or not the first one is still running it. It therefore has to be
+    | longer than the longest timeout any job in this application declares, and it
+    | is one setting across every connection so that changing the queue driver
+    | cannot change the answer. Both of those are asserted by QueueRetryAfterTest.
+    |
+    | SQS has no entry here because the same window is the queue's visibility
+    | timeout, which is set on the queue in AWS rather than in this file.
+    |
     */
 
     'connections' => [
@@ -38,7 +48,7 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            'retry_after' => (int) env('QUEUE_RETRY_AFTER', 1200),
             'after_commit' => false,
         ],
 
@@ -46,7 +56,7 @@ return [
             'driver' => 'beanstalkd',
             'host' => 'localhost',
             'queue' => 'default',
-            'retry_after' => 90,
+            'retry_after' => (int) env('QUEUE_RETRY_AFTER', 1200),
             'block_for' => 0,
             'after_commit' => false,
         ],
@@ -66,7 +76,7 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
+            'retry_after' => (int) env('QUEUE_RETRY_AFTER', 1200),
             'block_for' => null,
             'after_commit' => false,
         ],

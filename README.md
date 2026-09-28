@@ -2,7 +2,11 @@
 
 [![CI](https://github.com/cardano-onboard/platform/actions/workflows/ci.yaml/badge.svg)](https://github.com/cardano-onboard/platform/actions/workflows/ci.yaml)
 
-Onboard.Ninja is an open-source, self-hosted tool for running Cardano token airdrops and distributions. Create campaigns, generate claim codes, and distribute ADA or native assets to wallets without relying on a third-party service.
+Onboard.Ninja is an open-source, self-hosted platform for running Cardano token airdrops at live events, and for finding out afterwards whether they onboarded anyone. Create campaigns, generate claim codes, print them as QR stickers, and distribute ADA or native assets to people claiming from a wallet they may be installing at that moment.
+
+It implements [CIP-99](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0099), the Cardano standard for onboarding claims, and ships with an on-chain onboarding analysis that reports which claimant wallets were new, which went on to transact on their own, and which delegated to a stake pool.
+
+**What self-hosted means here.** Your instance holds your data: claimant addresses, stake keys and the onboarding analysis stay in your database and are not sent anywhere. Putting a transaction on chain is the exception. That still needs a transaction backend, and there is currently no option that submits without one. See [Transaction Backend](#transaction-backend) before you deploy, not after.
 
 ---
 
@@ -28,6 +32,18 @@ Onboard.Ninja is an open-source, self-hosted tool for running Cardano token aird
 - The platform batches and dispatches transactions via a pluggable transaction backend
 - Track claim status, view live wallet balances, and refund unclaimed tokens back to any address
 - Optional one-per-wallet enforcement to prevent duplicate claims
+- Analyse the campaign against the chain afterwards and report, per claimant wallet:
+  - **New** — the wallet's first ever transaction was this claim, so the campaign put it on chain
+  - **Transacted for itself** — the wallet later sent a transaction of its own. Receiving a second
+    payout does not count, so the number cannot be inflated by sending more tokens, and a
+    transaction that carried nothing but the wallet's own stake certificate does not count either,
+    because a wallet pays the deposit and the fee for its own delegation
+  - **Delegated** — the wallet is registered and delegated to a stake pool, reported separately from
+    the figure above and with how long after the claim it happened
+  - **When** — how long after each claim those happened, reported at 30, 60 and 90 days
+
+  A wallet the chain query could not be read for is reported as unknown rather than as a wallet
+  that did nothing, in the panel and in the CSV export alike.
 
 ---
 

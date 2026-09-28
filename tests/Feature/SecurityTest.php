@@ -14,6 +14,9 @@ class SecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Stand-in for a separate asset host, so no real deployment hostname ships in a fixture. */
+    private const ASSET_ORIGIN = 'https://assets.example.test';
+
     // ── Security Headers ─────────────────────────────────────────────────
 
     public function test_security_headers_are_present(): void
@@ -71,22 +74,22 @@ class SecurityTest extends TestCase
 
     public function test_csp_allows_the_asset_cdn_origin(): void
     {
-        // On Vapor the built JS/CSS/fonts are served from the CloudFront asset domain
-        // (ASSET_URL), a different origin than the app. Without the origin in the CSP,
-        // 'self' does not match and the browser blocks every bundle — which is exactly
-        // what broke on beta.onbd.io. The asset origin must be added to the relevant
-        // directives (host only, no path/hash).
-        config(['app.asset_url' => 'https://d1o8vmgw40u93x.cloudfront.net/8af4cb2d/build']);
+        // When ASSET_URL points the built JS/CSS/fonts at a separate asset host, that is a
+        // different origin than the app. Without the origin in the CSP, 'self' does not
+        // match and the browser blocks every bundle — which is exactly what broke on
+        // beta.onbd.io. The asset origin must be added to the relevant directives (host
+        // only, no path/hash).
+        config(['app.asset_url' => self::ASSET_ORIGIN.'/deploy-abc123/build']);
 
         $csp = $this->get('/')->headers->get('Content-Security-Policy');
 
         $this->assertNotEmpty($csp);
-        $origin = 'https://d1o8vmgw40u93x.cloudfront.net';
+        $origin = self::ASSET_ORIGIN;
         $this->assertMatchesRegularExpression('/script-src[^;]*'.preg_quote($origin, '/').'/', $csp);
         $this->assertMatchesRegularExpression('/style-src[^;]*'.preg_quote($origin, '/').'/', $csp);
         $this->assertMatchesRegularExpression('/font-src[^;]*'.preg_quote($origin, '/').'/', $csp);
         // The path/hash from ASSET_URL must not leak into the source — CSP matches on origin.
-        $this->assertStringNotContainsString('cloudfront.net/8af4cb2d', $csp);
+        $this->assertStringNotContainsString('deploy-abc123', $csp);
     }
 
     public function test_csp_is_unchanged_when_asset_url_is_same_origin(): void
@@ -98,7 +101,7 @@ class SecurityTest extends TestCase
         $csp = $this->get('/')->headers->get('Content-Security-Policy');
 
         $this->assertStringContainsString("script-src 'self'", $csp);
-        $this->assertStringNotContainsString('cloudfront.net', $csp);
+        $this->assertStringNotContainsString(self::ASSET_ORIGIN, $csp);
     }
 
     // ── XSS Prevention ──────────────────────────────────────────────────

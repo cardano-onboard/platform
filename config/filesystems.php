@@ -45,16 +45,17 @@ return [
         ],
 
         /*
-         * Laravel Cloud object storage (Cloudflare R2, S3-compatible).
+         * S3-compatible object storage for a managed host.
          *
-         * Attaching a bucket to a Cloud environment injects FILESYSTEM_DISK plus the
-         * AWS_* credentials. FILESYSTEM_DISK is set to the "disk name" chosen when the
-         * bucket was created — ours is "private" — so a disk of that name has to exist
-         * here or nothing can resolve it.
+         * Hosts that let you attach a bucket inject FILESYSTEM_DISK plus the AWS_*
+         * credentials, and set FILESYSTEM_DISK to the "disk name" chosen when the bucket
+         * was created. A disk of that name has to exist here or nothing can resolve it,
+         * so "private" is defined for hosts that use that name.
          *
-         * No 'visibility' key on purpose: R2 manages visibility at the bucket level and
-         * rejects per-object ACL headers with a NotImplemented error. A bucket created
-         * as private stays private; reach for temporaryUrl() to hand out access.
+         * No 'visibility' key on purpose: some S3-compatible stores manage visibility at
+         * the bucket level and reject per-object ACL headers with a NotImplemented error.
+         * A bucket created as private stays private; reach for temporaryUrl() to hand out
+         * access.
          */
         'private' => [
             'driver' => 's3',
@@ -81,6 +82,24 @@ return [
         ],
 
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Signed Upload Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | How long, in minutes, a browser has to finish a direct upload against the
+    | pre-signed PUT that SignedStorageUrlController issues. It has to outlast a
+    | large codes file on a slow connection and no longer, since the URL is a
+    | standing permission to write to the bucket until it expires.
+    |
+    | This value used to come from a third-party package that provided the signed
+    | upload route before this application had its own. The five minutes is the
+    | same default that package used.
+    |
+    */
+
+    'signed_upload_expires_minutes' => (int) env('SIGNED_UPLOAD_EXPIRES_MINUTES', 5),
 
     /*
     |--------------------------------------------------------------------------

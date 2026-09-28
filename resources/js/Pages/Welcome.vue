@@ -3,6 +3,8 @@ import { Head, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { useTheme } from 'vuetify';
 import LogoSvg from '@/Components/LogoSvg.vue';
+import DeploymentNoticeBar from '@/Components/DeploymentNoticeBar.vue';
+import BetaNoticeBar from '@/Components/BetaNoticeBar.vue';
 
 const theme = useTheme();
 const isDark = computed(() => theme.global.name.value === 'onboard_dark');
@@ -14,8 +16,16 @@ function toggleTheme() {
 }
 
 const page = usePage();
-const betaBanner = ref(page.props.beta_banner ?? false);
-const betaDismissed = ref(false);
+
+// The theme toggle sits below whichever banners are showing. The two notices measure
+// themselves, because their messages wrap on a phone; the test-mode bar is a fixed 36px.
+const noticeHeight = ref(0);
+const betaHeight = ref(0);
+const toggleTop = computed(() => {
+    let offset = 8 + noticeHeight.value + betaHeight.value;
+    if (page.props.transaction_backend === 'null') offset += 36;
+    return offset + 'px';
+});
 
 // The self-hosted build ships a reduced route table — the marketing pages
 // (terms/privacy/faqs) and registration exist only on the SaaS deployment.
@@ -37,6 +47,7 @@ defineProps({
     <Head title="Welcome" />
 
     <v-app>
+        <DeploymentNoticeBar @height="noticeHeight = $event" />
         <v-system-bar
             v-if="page.props.transaction_backend === 'null'"
             color="error"
@@ -46,20 +57,8 @@ defineProps({
             <v-icon icon="mdi-flask-outline" class="me-2" size="small" />
             TEST MODE — No real transactions will be sent. Do NOT send tokens to any displayed wallet addresses.
         </v-system-bar>
-        <v-system-bar
-            v-if="betaBanner && !betaDismissed"
-            color="warning"
-            class="text-center"
-            height="32"
-        >
-            <v-icon icon="mdi-alert" class="me-2" size="small" />
-            This system is currently in beta. Features may be incomplete or subject to change.
-            <v-spacer />
-            <v-btn icon size="x-small" variant="text" @click="betaDismissed = true">
-                <v-icon icon="mdi-close" size="small" />
-            </v-btn>
-        </v-system-bar>
-        <div style="position: absolute; top: 8px; right: 16px; z-index: 10;">
+        <BetaNoticeBar @height="betaHeight = $event" />
+        <div :style="{ position: 'absolute', top: toggleTop, right: '16px', zIndex: 10 }">
             <v-btn icon variant="text" @click="toggleTheme">
                 <v-icon :icon="isDark ? 'mdi-white-balance-sunny' : 'mdi-weather-night'" />
             </v-btn>
@@ -101,7 +100,7 @@ defineProps({
                                         Log In
                                     </v-btn>
                                     <v-btn
-                                        v-if="canRegister"
+                                        v-if="canRegister && hasRoute('register')"
                                         color="primary"
                                         variant="outlined"
                                         size="large"

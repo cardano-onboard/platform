@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
         $middleware->web(append: [
+            // Appended rather than prepended because it needs the session, which
+            // StartSession opens earlier in this group.
+            \App\Http\Middleware\CaptureSourceCode::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
@@ -34,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'proxy.quota' => \App\Http\Middleware\CheckProxyQuota::class,
             'proxy.log' => \App\Http\Middleware\LogProxyUsage::class,
+            'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
 
         $middleware->redirectGuestsTo('/login');

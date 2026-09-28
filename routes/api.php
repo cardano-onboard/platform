@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\CodeApiController;
 use App\Http\Controllers\CodeController;
 use App\Http\Controllers\PhyrhoseProxyController;
+use App\Support\ApiAbilities;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -44,3 +46,17 @@ Route::middleware(['auth:sanctum', 'proxy.log'])
         Route::get('/status/{purchaseId}', [PhyrhoseProxyController::class, 'checkStatus']);
         Route::get('/balance', [PhyrhoseProxyController::class, 'getBalance']);
     });
+
+// Code API — the one seam an external event application has into a campaign's codes.
+// Each endpoint carries its own ability, so a token minted for one can never reach the
+// other, and neither reaches anything a campaign owner's own session can. {code} is a
+// plain string, not a bound model: the caller only ever holds the code returned by the
+// first endpoint, and Code's route key is its numeric id, which nothing outside this
+// application has any reason to know.
+Route::middleware(['auth:sanctum', 'abilities:'.ApiAbilities::CODES_CREATE, 'throttle:code-api-create'])
+    ->post('/v1/campaigns/{campaign}/codes', [CodeApiController::class, 'store'])
+    ->name('api.codes.store');
+
+Route::middleware(['auth:sanctum', 'abilities:'.ApiAbilities::CODES_STATUS, 'throttle:code-api-status'])
+    ->get('/v1/campaigns/{campaign}/codes/{code}/status', [CodeApiController::class, 'status'])
+    ->name('api.codes.status');

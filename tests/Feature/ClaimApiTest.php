@@ -64,6 +64,21 @@ class ClaimApiTest extends TestCase
         $response->assertJson(['status' => 'invalidaddress']);
     }
 
+    public function test_claim_from_an_enterprise_address_is_refused_as_invalid_address(): void
+    {
+        $response = $this->postJson(route('claim.v1', $this->campaign), [
+            'code' => $this->code->code,
+            'address' => 'addr_test1vqwhqhu2kfzhq62helz59uep6shglzx4qsy9r6fsgetx8psty2jde',
+        ]);
+
+        $response->assertJson([
+            'code' => 400,
+            'status' => 'invalidaddress',
+            'message' => 'Claims need a base address with a staking key. Enterprise, pointer and Byron addresses are not accepted.',
+        ]);
+        $this->assertDatabaseMissing('claims', ['address' => 'addr_test1vqwhqhu2kfzhq62helz59uep6shglzx4qsy9r6fsgetx8psty2jde']);
+    }
+
     public function test_claim_nonexistent_code_returns_not_found(): void
     {
         Http::fake();

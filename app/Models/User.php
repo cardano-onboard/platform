@@ -34,6 +34,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
     ];
 
+    /*
+     * is_admin is deliberately absent from $fillable. Registration builds its create()
+     * array from request input, so a mass-assignable flag would let anyone registering
+     * grant themselves the operator view by posting one extra field.
+     */
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -52,6 +58,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_admin' => 'boolean',
     ];
 
     public function campaigns(): HasMany

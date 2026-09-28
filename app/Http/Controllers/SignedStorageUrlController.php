@@ -8,28 +8,28 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Laravel\Vapor\Contracts\SignedStorageUrlController as SignedStorageUrlControllerContract;
 use RuntimeException;
 
 /**
  * Issues the pre-signed PUT that the browser uploads a bulk codes file to.
  *
- * Replaces vapor-core's controller, which is wired to Vapor's own assumptions and does
- * not survive a move to Laravel Cloud:
+ * Replaced a third-party package's controller, which assumes one specific storage layout
+ * and breaks on any other:
  *
  *  - It reads AWS_BUCKET and the credentials straight out of $_ENV and takes the region
  *    from `filesystems.disks.s3`, so it always signs against the "s3" disk no matter what
- *    FILESYSTEM_DISK says. On Cloud the attached bucket is exposed as the "private" disk.
- *  - It always sends an ACL header on the PutObject. Cloudflare R2, which backs Cloud
- *    object storage, manages visibility per bucket and rejects per-object ACLs with a
- *    NotImplemented error, so every upload would fail even once the bucket resolved.
+ *    FILESYSTEM_DISK says. A host that injects its own bucket exposes it under the disk
+ *    name the bucket was created with, which is not "s3".
+ *  - It always sends an ACL header on the PutObject. An S3-compatible store that manages
+ *    visibility per bucket rejects per-object ACLs with a NotImplemented error, so every
+ *    upload would fail even once the bucket resolved.
  *
  * Signing through the resolved disk fixes both: the disk already carries the bucket,
  * region, endpoint, path-style flag and credentials for whichever backend is attached,
  * and Laravel's temporaryUploadUrl() sets no ACL. Presigning is an offline computation,
  * so this makes no network call.
  */
-class SignedStorageUrlController extends Controller implements SignedStorageUrlControllerContract
+class SignedStorageUrlController extends Controller
 {
     public function store(Request $request)
     {
@@ -44,17 +44,18 @@ class SignedStorageUrlController extends Controller implements SignedStorageUrlC
 
         $uuid = (string) Str::uuid();
         $key = 'tmp/'.$uuid;
-        // Vapor.store() always sends the key but leaves it empty for a file with no type,
-        // and validate() omits it entirely when absent — both mean "unknown".
+        // The uploader sends the key but leaves it empty for a file with no type, and
+        // validate() omits it entirely when absent — both mean "unknown".
         $contentType = $validated['content_type'] ?? null ?: 'application/octet-stream';
 
         try {
             // No ACL in the options on purpose — see the class docblock. The bucket's own
-            // visibility governs the object, on both R2 and a modern S3 bucket (which
-            // rejects ACL headers outright under bucket-owner-enforced ownership).
+            // visibility governs the object, on both a bucket-level-visibility store and a
+            // modern S3 bucket (which rejects ACL headers outright under
+            // bucket-owner-enforced ownership).
             $signed = Storage::disk($diskName)->temporaryUploadUrl(
                 $key,
-                now()->addMinutes((int) config('vapor.signed_storage_url_expires_after', 5)),
+                now()->addMinutes((int) config('filesystems.signed_upload_expires_minutes', 5)),
                 ['ContentType' => $contentType],
             );
         } catch (RuntimeException $e) {

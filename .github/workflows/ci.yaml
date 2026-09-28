@@ -1,13 +1,14 @@
 name: CI
 
-# Merge gate. Runs the full suite (style, unit/feature, frontend, and the Dusk
-# browser + CSP gate) on every pull request targeting a deploy branch. Mark the
-# lint / test / dusk / docker jobs as required status checks in branch protection
-# so a PR can only merge once they are green. The deploy workflows (staging.yaml,
-# production.yaml) intentionally do NOT re-run these — they trust this gate.
+# Merge gate. Runs the full suite (style, unit/feature, frontend, the transaction
+# package on its own, and the Dusk browser + CSP gate) on every pull request,
+# whatever branch it targets, so work merged into an intermediate branch is
+# proved before it reaches a deploy branch. Mark the lint / test / package / dusk / docker jobs as
+# required status checks in branch protection so a PR can only merge once they are
+# green. The deploy workflows (staging.yaml, production.yaml) intentionally do NOT
+# re-run these — they trust this gate.
 on:
   pull_request:
-    branches: [staging, main]
 
 jobs:
   lint:
@@ -31,7 +32,7 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     # Run the PHP suite against MySQL (not SQLite) so strict mode — ONLY_FULL_GROUP_BY et
-    # al., matching the RDS/Vapor production DB — is exercised in CI. SQLite silently
+    # al., matching the MySQL production DB — is exercised in CI. SQLite silently
     # accepts MySQL-invalid SQL (e.g. aggregate + $withCount without GROUP BY), letting
     # prod-only 500s slip through; running the real engine catches them here.
     services:
@@ -56,7 +57,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
-          extensions: pdo_mysql
+          extensions: pdo_mysql, bcmath, gd
           tools: composer:v2
           coverage: pcov
       - name: Install Composer Dependencies
@@ -136,7 +137,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
-          extensions: sqlite3, pdo_mysql
+          extensions: sqlite3, pdo_mysql, bcmath, gd
           tools: composer:v2
           coverage: none
       - name: Install Composer Dependencies

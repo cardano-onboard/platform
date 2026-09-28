@@ -61,7 +61,7 @@ rather than turning the policy off.
 
 Pending means dispatched but not yet confirmed on chain. In order:
 
-1. Press **Check Claimed** to force an immediate status re-check.
+1. Press **Check claims** to force an immediate status re-check.
 2. Check the campaign bucket has funds. A token reward needs ADA alongside it, so a bucket
    with tokens but no ADA cannot pay out.
 3. Look at the claim's retry count. Claims retry automatically; repeated failures point at
@@ -78,6 +78,12 @@ claim. Top up and the queued claims go through.
 Rewards go to the address submitted at claim time, which is on the campaign page and in the
 claims export. If a claimant used a friend's phone or pasted an address from elsewhere, the
 tokens went to that wallet. There's nothing to recover from your side.
+
+### A wallet's claim is refused as an invalid address
+
+Claims need a base address, one that carries a stake key. A wallet sending an enterprise,
+pointer or Byron address gets `invalidaddress` with a message saying so. The claimant can
+switch the wallet to a standard address with staking, or use another wallet.
 
 ### QR codes don't scan reliably on the event floor
 
@@ -98,19 +104,27 @@ php artisan onboard:analyze "My Campaign"
 ### The analysis finishes but shows fewer wallets than I have claims
 
 Two expected reasons. Claims that never confirmed on chain have no transaction to classify
-against and are skipped. Claimants who presented an enterprise address are excluded, since
-wallet history is keyed on the stake key and there is nothing to look up. Several claims
-from one wallet also count once, because the unit is the wallet, not the claim.
+against and are skipped. Claims made from an enterprise address, which the claim endpoint
+accepted before it required base addresses, are excluded, since wallet history is keyed on
+the stake key and there is nothing to look up. Several claims from one wallet also count
+once, because the unit is the wallet, not the claim.
 
 ### The analysis fails partway on a large campaign
 
 Rate limiting on the public query layer. Set `KOIOS_API_TOKEN` to raise your limit and run
 it again — results are stored per wallet, so a re-run picks up rather than starting over.
 
+### The result says the run could not read some wallets
+
+The query layer did not answer for every wallet the run went to read. Those wallets are
+unknown: they are not in any percentage, the per-wallet table says unknown rather than zero,
+and the export leaves their cells blank. Re-run the analysis once the query layer answers
+again, and set `KOIOS_API_TOKEN` if the failures came from rate limiting.
+
 ### My numbers look worse than I expected
 
 Check whether your own test claims are in there. Unflagged, they appear as established
-wallets that never activated. See
+wallets that never transacted. See
 [Excluding your own test claims](./onboarding-analysis#excluding-your-own-test-claims).
 
 ## Still stuck?

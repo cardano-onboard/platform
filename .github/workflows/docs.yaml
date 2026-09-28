@@ -5,13 +5,13 @@ name: Deploy Docs
 # If you serve docs from a custom domain, set `base: '/'` in docs/.vitepress/config.mjs.
 
 on:
+  # Every push to main here is a release being merged, so the site is rebuilt on all of
+  # them. A paths filter would work now that a release arrives as an ordinary merge with
+  # ancestry behind it, rather than as the orphan commit GitHub had nothing to diff
+  # against, but there is nothing for it to save: a release that changes no documentation
+  # still changes the version this site prints, and a build costs a few seconds.
   push:
     branches: [main]
-    paths:
-      - 'docs/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/docs.yaml'
   workflow_dispatch:
 
 permissions:

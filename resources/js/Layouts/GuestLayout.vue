@@ -3,6 +3,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { useTheme } from 'vuetify';
 import LogoSvg from '@/Components/LogoSvg.vue';
+import DeploymentNoticeBar from '@/Components/DeploymentNoticeBar.vue';
+import BetaNoticeBar from '@/Components/BetaNoticeBar.vue';
 
 const theme = useTheme();
 const isDark = computed(() => theme.global.name.value === 'onboard_dark');
@@ -14,21 +16,22 @@ function toggleTheme() {
 }
 
 const page = usePage();
-const betaBanner = ref(page.props.beta_banner ?? false);
-const betaDismissed = ref(false);
 const showNullBackend = computed(() => page.props.transaction_backend === 'null');
-const showBeta = computed(() => betaBanner.value && !betaDismissed.value);
+// Heights of the deployment and beta notices above, as each bar measures itself, so the
+// toggle clears them however many lines their messages wrap onto.
+const noticeHeight = ref(0);
+const betaHeight = ref(0);
 
 const toggleTop = computed(() => {
-    let offset = 8;
+    let offset = 8 + noticeHeight.value + betaHeight.value;
     if (showNullBackend.value) offset += 36;
-    if (showBeta.value) offset += 32;
     return offset + 'px';
 });
 </script>
 
 <template>
     <v-app>
+        <DeploymentNoticeBar @height="noticeHeight = $event" />
         <v-system-bar
             v-if="showNullBackend"
             color="error"
@@ -38,19 +41,7 @@ const toggleTop = computed(() => {
             <v-icon icon="mdi-flask-outline" class="me-2" size="small" />
             TEST MODE — No real transactions will be sent. Do NOT send tokens to any displayed wallet addresses.
         </v-system-bar>
-        <v-system-bar
-            v-if="showBeta"
-            color="warning"
-            class="text-center"
-            height="32"
-        >
-            <v-icon icon="mdi-alert" class="me-2" size="small" />
-            This system is currently in beta. Features may be incomplete or subject to change.
-            <v-spacer />
-            <v-btn icon size="x-small" variant="text" @click="betaDismissed = true">
-                <v-icon icon="mdi-close" size="small" />
-            </v-btn>
-        </v-system-bar>
+        <BetaNoticeBar @height="betaHeight = $event" />
 
         <div :style="{ position: 'absolute', top: toggleTop, right: '16px', zIndex: 10 }">
             <v-btn icon variant="text" @click="toggleTheme">

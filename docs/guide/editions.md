@@ -11,12 +11,19 @@ the same way in both. The differences are in account management and infrastructu
 | Campaigns, codes, QR, claiming, refunds     | ✅            | ✅                |
 | Native-token rewards + known-asset import   | ✅            | ✅                |
 | Performance charts & reward details         | ✅            | ✅                |
+| Campaign cost statement (fees, network cost, rewards given away) | ✅ | ✅          |
+| Operator alerts (warns when a campaign is running short) | ✅      | ✅                |
 | Transaction delivery                        | ✅ (managed)  | ⚠️ Needs a backend |
 | **User registration & email verification**  | ✅            | ❌ (admin-seeded) |
 | **Password reset**                          | ✅            | ❌                |
 | **Profile page**                            | ✅            | ❌                |
-| **API tokens (issue)**                      | ✅            | ❌                |
+| **Proxy API tokens (issue)**                | ✅            | ❌                |
+| **Code API tokens (issue via `api:token`)** | ✅            | ✅                 |
 | **Proxy backend (consume)**                 | n/a           | ✅ (uses a SaaS token) |
+| **Claim pricing, credits & billing**        | ✅            | ❌                |
+| **Spend limits & held claims**              | ✅            | ❌                |
+| **Admin platform metrics**                  | ✅            | ❌                |
+| **First-party source codes**                | ✅            | ❌                |
 | Managed infrastructure & backend            | ✅            | You run it        |
 
 ## Why the difference?
@@ -24,8 +31,21 @@ the same way in both. The differences are in account management and infrastructu
 The self-hosted edition is meant for a single operator (or small team) running their own
 instance, so it ships with an **admin account seeded from configuration** rather than open
 registration, and omits the multi-user account surfaces (registration, email verification,
-password reset, profile, API-token issuance). The publish process strips those routes,
-controllers, views, and tests from the public build.
+password reset, profile, and the profile page's own token issuance). The publish process
+strips those routes, controllers, views, and tests from the public build. It does not
+strip `api:token`: a self-hosted operator still needs a way to mint a code API token,
+just from a console command rather than a page.
+
+## Hosted-only features
+
+The rows above marked hosted-only are about running many operators on one shared deployment,
+so a single self-hosted instance has no use for them.
+
+The campaign cost statement and the running-short alert are not part of that: they are about
+one campaign an operator is already running rather than the deployment as a whole, and both
+ship in full on a self-hosted install too. See
+[Campaigns & funding](./campaigns#what-this-campaign-cost) and
+[Warnings when it runs short](./campaigns#warnings-when-it-runs-short).
 
 ## Transaction delivery on a self-hosted instance
 

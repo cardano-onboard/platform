@@ -91,6 +91,17 @@ class Campaign extends Model
         return $this->hasMany(Code::class);
     }
 
+    /**
+     * The people and channels this campaign's codes are handed out through.
+     *
+     * Soft-deleted partners are excluded here, so the picker never offers one that was
+     * removed, while codes already assigned to it keep the attribution.
+     */
+    public function partners(): HasMany
+    {
+        return $this->hasMany(Partner::class);
+    }
+
     public function rewards(): HasManyThrough
     {
         return $this->through('codes')->has('rewards');
@@ -111,6 +122,18 @@ class Campaign extends Model
         return $this->hasMany(CampaignWalletInsight::class);
     }
 
+    /** Background work on this campaign, past and present. */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(CampaignTask::class);
+    }
+
+    /** Sticker archives generated for this campaign's codes. */
+    public function qrExports(): HasMany
+    {
+        return $this->hasMany(QrExport::class);
+    }
+
     /**
      * Canonical claim endpoint URL for this campaign — the short subdomain route
      * (https://<claim_domain>/v1/{campaign}) when a claim domain is configured,
@@ -120,10 +143,11 @@ class Campaign extends Model
     public function claimUrl(): string
     {
         // Prefer the short subdomain route, but only if it is actually registered.
-        // The claim.v1.short route is registered conditionally on claim_domain, and on
-        // Vapor a build-time route cache can omit it even when config resolves the domain
-        // at runtime — so guard on Route::has() to degrade to the always-registered long
-        // route instead of throwing RouteNotFoundException on a core page.
+        // The claim.v1.short route is registered conditionally on claim_domain, and where
+        // the route cache is built ahead of deploy it can omit the route even though config
+        // resolves the domain at runtime — so guard on Route::has() to degrade to the
+        // always-registered long route instead of throwing RouteNotFoundException on a core
+        // page.
         return config('cardano.claim_domain') && Route::has('claim.v1.short')
             ? route('claim.v1.short', $this)
             : route('claim.v1', $this);
