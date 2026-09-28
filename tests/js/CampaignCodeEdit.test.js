@@ -119,19 +119,22 @@ async function settle(wrapper) {
  * Three turns is still a guess about how busy the machine is, and under the whole suite it is
  * sometimes wrong: two dialogs that mount and unmount around each other can be read mid-change,
  * where one of them has gone and the other has not arrived. Waiting for the state the assertion
- * is about removes the guess. It gives up after enough turns that a real failure still reports
- * itself through the assertion rather than through a timeout.
+ * is about removes the guess. It waits by the clock rather than by a count of turns, because a
+ * slow machine spends longer on each turn, and fifty of them ran out on a public CI runner before
+ * the second dialog arrived. It gives up well inside the test's own timeout, so a real failure
+ * still reports itself through the assertion rather than through a timeout.
  */
-async function settleUntil(wrapper, ready, turns = 50) {
-    for (let turn = 0; turn < turns; turn += 1) {
-        if (ready()) {
-            return;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 0));
+async function settleUntil(wrapper, ready, withinMs = 4000) {
+    const deadline = Date.now() + withinMs;
+    while (!ready() && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
         await wrapper.vm.$nextTick();
     }
 }
+
+// These two open, close and reopen dialogs, which a slow CI runner takes past vitest's
+// default five seconds to do.
+const DIALOG_ROUND_TRIP_TIMEOUT = 20000;
 
 function fieldsLabelled(wrapper, label) {
     return wrapper
@@ -354,7 +357,7 @@ describe('CampaignShow reward editing', () => {
         expect(fields).toHaveLength(2);
         expect(fields[0].props('modelValue')).toBe(1000000);
         expect(fields[1].props('modelValue')).toBe(9000000);
-    });
+    }, DIALOG_ROUND_TRIP_TIMEOUT);
 
     /**
      * And the other direction: a token added while the create dialog is open belongs to the
@@ -375,11 +378,14 @@ describe('CampaignShow reward editing', () => {
         await settle(wrapper);
         window.axios.post.mockClear();
 
-        const addToken = wrapper
-            .findAllComponents({ name: 'VBtn' })
-            .filter((button) => button.text().trim() === 'Add Token');
-        await addToken[0].trigger('click');
+        const addTokenButtons = () =>
+            wrapper
+                .findAllComponents({ name: 'VBtn' })
+                .filter((button) => button.text().trim() === 'Add Token');
+        await settleUntil(wrapper, () => addTokenButtons().length > 0);
+        await addTokenButtons()[0].trigger('click');
         await settle(wrapper);
+        await settleUntil(wrapper, () => fieldsLabelled(wrapper, 'Policy ID').length > 0);
 
         await fieldsLabelled(wrapper, 'Policy ID')[0].setValue(POLICY);
         await fieldsLabelled(wrapper, 'Token ID')[0].setValue(ASSET);
@@ -392,10 +398,11 @@ describe('CampaignShow reward editing', () => {
             .pop();
         await submit.trigger('click');
         await settle(wrapper);
+        await settleUntil(wrapper, () => quoteCalls().length > 0);
 
         // The bundle quoted is the create form's one token, not the edited code's.
         expect(quoteCalls()[0][1]).toEqual({
             tokens: [{ policy_id: POLICY, token_id: ASSET, quantity: 3 }],
         });
-    });
+    }, DIALOG_ROUND_TRIP_TIMEOUT);
 });
