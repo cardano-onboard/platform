@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Services\KoiosService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class KoiosServiceTest extends TestCase
@@ -13,6 +14,7 @@ class KoiosServiceTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        Sleep::fake();
     }
 
     private function fakeResponse(): array
@@ -138,6 +140,7 @@ class KoiosServiceTest extends TestCase
         $this->assertIsArray($rows);
         $this->assertCount(1, $rows);
         $this->assertSame(2, $attempt);
+        Sleep::assertSequence([Sleep::for(1)->seconds()]);
     }
 
     /**
@@ -168,6 +171,23 @@ class KoiosServiceTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertIsArray($rows[0], 'A page has to hold rows, not strings.');
         $this->assertSame(2, $attempt, 'The list of strings was taken for a page and never retried.');
+        Sleep::assertSequence([Sleep::for(1)->seconds()]);
+    }
+
+    /** Each failed attempt waits one second longer than the last, and four attempts are made. */
+    public function test_a_page_that_keeps_failing_backs_off_one_second_longer_each_time_then_gives_up(): void
+    {
+        Http::fake(['*' => Http::response('unavailable', 503)]);
+
+        $this->assertNull((new KoiosService)->tokenRegistryPage(0, 1000, 'mainnet'));
+
+        Sleep::assertSequence([
+            Sleep::for(1)->seconds(),
+            Sleep::for(2)->seconds(),
+            Sleep::for(3)->seconds(),
+            Sleep::for(4)->seconds(),
+        ]);
+        Http::assertSentCount(4);
     }
 
     /** A page that genuinely holds nothing is still the end of the registry. */
@@ -176,5 +196,46 @@ class KoiosServiceTest extends TestCase
         Http::fake(['*' => Http::response([])]);
 
         $this->assertSame([], (new KoiosService)->tokenRegistryPage(0, 1000, 'mainnet'));
+    }
+
+    /**
+     * The registry request names the columns the sync stores and leaves out the logo.
+     *
+     * Koios includes a base64 PNG logo in every registry row, which made a mainnet page
+     * about 40 MB where the same page without it is about 267 KB. The sync throws the logo
+     * away, so asking for it is pure download. Trimmed rows still have to read as a page.
+     */
+    public function test_the_registry_request_selects_the_stored_columns_and_not_the_logo(): void
+    {
+        Http::fake(['*asset_token_registry*' => Http::response([[
+            'policy_id' => 'a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235',
+            'asset_name' => '484f534b59',
+            'asset_name_ascii' => 'HOSKY',
+            'ticker' => 'HOSKY',
+            'description' => 'Hosky Token',
+            'url' => 'https://hosky.io',
+            'decimals' => 0,
+        ]])]);
+
+        $rows = (new KoiosService)->tokenRegistryPage(2000, 1000, 'mainnet');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('HOSKY', $rows[0]['ticker']);
+
+        Http::assertSent(function ($request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            $this->assertSame(
+                'policy_id,asset_name,asset_name_ascii,ticker,description,url,decimals',
+                $query['select'] ?? null,
+                'The registry request has to select the stored columns.'
+            );
+            $this->assertStringNotContainsString('logo', $query['select']);
+            $this->assertNotContains('name', explode(',', $query['select']), 'There is no name column in the registry.');
+            $this->assertSame('2000', $query['offset']);
+            $this->assertSame('1000', $query['limit']);
+
+            return true;
+        });
     }
 }

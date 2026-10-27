@@ -252,6 +252,12 @@ class QueueRetryAfterTest extends TestCase
      */
     private function seconds(string $expression, string $class): int
     {
+        // One job runs every housekeeping task, and each task's entry in config names its own
+        // timeout. The job is allowed the longest of them, so that is what it is measured as.
+        if ($class === \App\Jobs\RunHousekeepingTask::class) {
+            return (int) max(0, ...array_values(array_map(static fn (array $task): int => (int) ($task['timeout'] ?? 0), config('housekeeping.tasks'))));
+        }
+
         $expression = trim($expression);
 
         if (preg_match('/^\(int\)\s*(.+)$/', $expression, $cast)) {

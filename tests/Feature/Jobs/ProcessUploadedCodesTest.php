@@ -29,7 +29,7 @@ class ProcessUploadedCodesTest extends TestCase
         $codesData = [
             'CODE001' => [
                 'lovelaces' => 2000000,
-                'abc123def456abc123def456abc123def456abc123def456abc123def456.746f6b656e' => 5,
+                'a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235.746f6b656e' => 5,
             ],
             'CODE002' => [
                 'lovelaces' => 3000000,
@@ -42,6 +42,51 @@ class ProcessUploadedCodesTest extends TestCase
 
         $this->assertDatabaseCount('codes', 2);
         $this->assertDatabaseCount('rewards', 1);
+    }
+
+    public function test_one_ada_with_a_native_asset_is_stored_at_exactly_the_minimum(): void
+    {
+        Storage::fake($this->uploadDisk());
+
+        $campaign = Campaign::factory()->for(User::factory()->create())->create(['network' => 'mainnet']);
+        Wallet::factory()->for($campaign)->create();
+
+        $policy = 'a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235';
+
+        Storage::disk($this->uploadDisk())->put('test/codes.json', json_encode([
+            'LOW' => ['lovelaces' => 1000000, $policy.'.484f534b59' => 1],
+            'HIGH' => ['lovelaces' => 10000000, $policy.'.484f534b59' => 1],
+            'PLAIN' => ['lovelaces' => 1000000],
+        ]));
+
+        (new ProcessUploadedCodes($campaign->id, 'test/codes.json'))->handle();
+
+        $this->assertSame(1150770, (int) Code::where('code', 'LOW')->value('lovelace'));
+        $this->assertSame(10000000, (int) Code::where('code', 'HIGH')->value('lovelace'));
+        $this->assertSame(1000000, (int) Code::where('code', 'PLAIN')->value('lovelace'));
+        $this->assertSame(2, DB::table('rewards')->count());
+    }
+
+    /**
+     * A reward whose policy id or asset name cannot exist is skipped. Stored, it would be in every
+     * batch and could never be built.
+     */
+    public function test_a_token_that_can_never_be_paid_is_not_imported(): void
+    {
+        Storage::fake($this->uploadDisk());
+
+        $campaign = Campaign::factory()->for(User::factory()->create())->create();
+        Wallet::factory()->for($campaign)->create();
+
+        Storage::disk($this->uploadDisk())->put('test/codes.json', json_encode([
+            'SHORT' => ['lovelaces' => 3000000, str_repeat('ab', 27).'.4142' => 1],
+            'ODD' => ['lovelaces' => 3000000, str_repeat('ab', 28).'.414' => 1],
+            'FINE' => ['lovelaces' => 3000000, str_repeat('ab', 28).'.4142' => 1],
+        ]));
+
+        (new ProcessUploadedCodes($campaign->id, 'test/codes.json'))->handle();
+
+        $this->assertSame(['FINE'], DB::table('codes')->join('rewards', 'rewards.code_id', '=', 'codes.id')->pluck('codes.code')->all());
     }
 
     public function test_rejects_oversized_file(): void

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CodeControllerTest extends TestCase
@@ -101,6 +102,41 @@ class CodeControllerTest extends TestCase
                 ],
             ])
             ->assertSessionHasErrors(['tokens.0.policy_id']);
+    }
+
+    /**
+     * A policy id is 56 hex characters and an asset name an even number of hex characters up to 64.
+     * Anything else can never be paid, so it is refused here instead of stopping the campaign later.
+     */
+    #[DataProvider('unusableTokens')]
+    public function test_code_creation_refuses_a_token_that_can_never_be_paid(string $policy, string $asset, string $field): void
+    {
+        $user = User::factory()->create();
+        $campaign = $this->createCampaignWithWallet($user);
+
+        $this->actingAs($user)
+            ->post(route('codes.store'), [
+                'campaign_id' => $campaign->id,
+                'lovelace' => 2000000,
+                'perWallet' => 1,
+                'uses' => 1,
+                'tokens' => [['policy_id' => $policy, 'token_id' => $asset, 'quantity' => 1]],
+            ])
+            ->assertSessionHasErrors([$field]);
+
+        $this->assertDatabaseCount('codes', 0);
+    }
+
+    public static function unusableTokens(): array
+    {
+        $policy = str_repeat('ab', 28);
+
+        return [
+            'policy one byte short' => [str_repeat('ab', 27), 'ff', 'tokens.0.policy_id'],
+            'policy a character short' => [substr($policy, 1), 'ff', 'tokens.0.policy_id'],
+            'asset of odd length' => [$policy, 'fff', 'tokens.0.token_id'],
+            'asset over 32 bytes' => [$policy, str_repeat('ab', 33), 'tokens.0.token_id'],
+        ];
     }
 
     public function test_user_cannot_create_code_for_another_users_campaign(): void

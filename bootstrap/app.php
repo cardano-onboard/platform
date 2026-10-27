@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        // Global, so the web, API and claim-subdomain routes all count as traffic. Its work
+        // is done in terminate(), after the response has been sent.
+        $middleware->append(\App\Http\Middleware\RunOverdueHousekeeping::class);
+
         $middleware->web(append: [
             // Appended rather than prepended because it needs the session, which
             // StartSession opens earlier in this group.

@@ -28,5 +28,5 @@ features:
   - title: SaaS or self-hosted
     details: Use the hosted service, or run the open-source platform yourself with Docker. The same app, two editions.
   - title: Flexible backends
-    details: Send via the Phyrhose transaction backend, relay through the hosted proxy, or run a dry-run "null" backend for testing.
+    details: Self-hosted installs submit their own transactions with a key per campaign. Phyrhose and the hosted proxy remain available, and a dry-run "null" backend is there for testing.
 ---

@@ -58,15 +58,42 @@ never two partners' codes added together. The name as you typed it is in the man
 
 ## The claim experience
 
-From the recipient's side:
+From the recipient's side, on a phone:
 
-1. They scan the QR (or open the claim link). The **code is pre-filled** from the QR.
-2. They enter their **Cardano wallet address**.
-3. They submit, and the reward is queued for delivery to their wallet.
+1. They scan the QR with a wallet that supports claim links. The wallet reads the code
+   from the QR.
+2. The wallet sends its own receive address and the code to the claim URL.
+3. The reward is queued for delivery to that address.
 
 Invalid codes, exhausted codes, and malformed addresses are rejected with a clear
 message. Per-wallet and per-IP rate limits protect the endpoint (see
 [Configuration](./configuration)).
+
+### On a desktop
+
+The desktop claim page is off by default and is turned on for each campaign. Use the
+**Allow claims from a desktop browser** switch when you create the campaign or in its
+edit dialog. Only the campaign's owner can change it, and it can be changed at any time.
+
+With the switch off, a browser that opens the claim URL sees a short page saying the
+link opens in a Cardano wallet app. The page shows nothing about the campaign, and the
+same page appears for a link to a campaign that does not exist. Wallets are unaffected:
+they claim at the same URL exactly as before, whatever the switch says.
+
+With the switch on, the claim URL serves a claim page. The recipient takes three steps:
+
+1. They enter the **claim code**.
+2. They connect a CIP-30 browser extension wallet, which supplies the address. The page
+   has no field for typing or pasting an address, so a recipient needs a wallet extension
+   installed. A base address is required; enterprise, pointer and Byron addresses are refused.
+3. They submit, and the reward is queued for delivery as above.
+
+The page posts to the same URL it was served from, so a claim from a desktop is the
+same request a wallet makes.
+
+To send a recipient to the page, share the claim URL shown on the campaign page. The
+recipient types the code from their card or message; the page never puts a code in a
+URL. The QR codes themselves are unchanged.
 
 ## Delivery
 

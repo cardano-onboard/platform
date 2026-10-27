@@ -37,7 +37,7 @@ function axiosAnswering(meta) {
                               body.assets.map((a) => [a.policy + a.asset_name, meta]),
                           ),
                       }
-                    : { data: { min_lovelace: 1000000, recommended_lovelace: 2000000, asset_count: 1 } },
+                    : { data: { min_lovelace: 1000000, asset_count: 1 } },
             ),
         ),
     };
@@ -1178,5 +1178,28 @@ describe('CampaignShow onboarding analysis', () => {
         const wrapper = mountShow({}, withTasks([importing]));
 
         expect(wrapper.vm.onboardingTask).toBeNull();
+    });
+});
+
+describe('CampaignShow desktop claims setting', () => {
+    it.each([
+        [1, 1],
+        [true, 1],
+        [0, 0],
+    ])('seeds the edit form switch from the stored value %j', (stored, seeded) => {
+        const wrapper = mountShow({ desktop_claims_enabled: stored });
+
+        expect(wrapper.vm.editForm.desktop_claims_enabled).toBe(seeded);
+
+        wrapper.vm.editForm.desktop_claims_enabled = 5;
+        wrapper.vm.openEditDialog();
+        expect(wrapper.vm.editForm.desktop_claims_enabled).toBe(seeded);
+    });
+
+    it('describes the claim URL by the setting', () => {
+        expect(mountShow({ desktop_claims_enabled: 1 }).text()).toContain('connects a wallet extension');
+        const off = mountShow({ desktop_claims_enabled: 0 }).text();
+        expect(off).toContain('open the link in a wallet app');
+        expect(off).not.toContain('connects a wallet extension');
     });
 });

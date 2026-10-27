@@ -66,9 +66,7 @@ function mountShow(campaignOverrides = {}, propOverrides = {}) {
 function quoteResponse(overrides = {}) {
     return {
         data: {
-            min_lovelace: 1159390,
-            headroom_lovelace: 1000000,
-            recommended_lovelace: 2159390,
+            min_lovelace: 1150770,
             coins_per_utxo_byte: 4310,
             source: 'koios',
             asset_count: 1,
@@ -153,23 +151,18 @@ describe('CampaignShow minimum UTxO', () => {
         wrapper = mountShow({}, {
             min_utxo: {
                 coins_per_utxo_byte: 4310,
-                headroom_lovelace: 1000000,
                 below_minimum_codes: 0,
-                tight_codes: 0,
             },
         });
 
         expect(wrapper.find('[data-test="codes-below-minimum"]').exists()).toBe(false);
-        expect(wrapper.find('[data-test="codes-tight"]').exists()).toBe(false);
-    });
+            });
 
     it('names the codes the chain will refuse', () => {
         wrapper = mountShow({}, {
             min_utxo: {
                 coins_per_utxo_byte: 4310,
-                headroom_lovelace: 1000000,
                 below_minimum_codes: 3,
-                tight_codes: 0,
             },
         });
 
@@ -184,43 +177,11 @@ describe('CampaignShow minimum UTxO', () => {
         wrapper = mountShow({}, {
             min_utxo: {
                 coins_per_utxo_byte: 4310,
-                headroom_lovelace: 1000000,
                 below_minimum_codes: 1,
-                tight_codes: 0,
             },
         });
 
         expect(wrapper.find('[data-test="codes-below-minimum"]').text()).toContain('1 code cannot be paid');
-    });
-
-    it('reports codes that leave a claimant nothing to spend, separately', () => {
-        wrapper = mountShow({}, {
-            min_utxo: {
-                coins_per_utxo_byte: 4310,
-                headroom_lovelace: 1000000,
-                below_minimum_codes: 0,
-                tight_codes: 2,
-            },
-        });
-
-        const alert = wrapper.find('[data-test="codes-tight"]');
-        expect(alert.exists()).toBe(true);
-        expect(alert.text()).toContain('2 codes');
-        expect(alert.text()).toContain('nothing to spend');
-    });
-
-    it('shows the unpayable warning rather than the tight one when both apply', () => {
-        wrapper = mountShow({}, {
-            min_utxo: {
-                coins_per_utxo_byte: 4310,
-                headroom_lovelace: 1000000,
-                below_minimum_codes: 1,
-                tight_codes: 4,
-            },
-        });
-
-        expect(wrapper.find('[data-test="codes-below-minimum"]').exists()).toBe(true);
-        expect(wrapper.find('[data-test="codes-tight"]').exists()).toBe(false);
     });
 
     it('asks the server for a minimum when the create dialog opens', async () => {
@@ -235,7 +196,7 @@ describe('CampaignShow minimum UTxO', () => {
         expect(payload).toEqual({ tokens: [] });
     });
 
-    it('states the minimum and a suggestion in the create dialog', async () => {
+    it('states the minimum in the create dialog and suggests nothing above it', async () => {
         window.axios.post.mockResolvedValue(quoteResponse({ asset_count: 2, policy_count: 2 }));
         wrapper = mountShow();
 
@@ -246,51 +207,68 @@ describe('CampaignShow minimum UTxO', () => {
         expect(hint).not.toBeNull();
         expect(hint.textContent).toContain('2 assets');
         expect(hint.textContent).toContain('2 policies');
-        expect(hint.textContent).toContain('1.15939 ADA');
-        // Rounded up to a whole ADA, which is the number an operator will actually type.
-        expect(hint.textContent).toContain('3 ADA');
+        expect(hint.textContent).toContain('1.15077 ADA');
+        expect(hint.textContent).not.toContain('Suggested');
+        expect(hint.textContent).not.toContain('3 ADA');
     });
 
-    it('calls a default 1 ADA reward unpayable once a token is in the bundle', async () => {
+    it('moves the default 1 ADA reward up to the minimum once a token is in the bundle', async () => {
         wrapper = mountShow();
 
         await wrapper.find('[data-test="add-code"]').trigger('click');
         await settle(wrapper);
 
-        expect(document.querySelector('[data-test="min-utxo-below"]')).not.toBeNull();
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe(1150770);
+        expect(document.querySelector('[data-test="min-utxo-below"]')).toBeNull();
         expect(document.querySelector('[data-test="min-utxo-tight"]')).toBeNull();
     });
 
-    it('warns without blocking when the amount clears the minimum but not the headroom', async () => {
-        window.axios.post.mockResolvedValue(quoteResponse({
-            min_lovelace: 1159390,
-            recommended_lovelace: 2159390,
-        }));
+    it('keeps an amount already above the minimum when assets are added', async () => {
         wrapper = mountShow();
 
         await wrapper.find('[data-test="add-code"]').trigger('click');
         await settle(wrapper);
 
-        await fieldLabelled(wrapper, 'Lovelace').setValue('1200000');
+        await fieldLabelled(wrapper, 'Lovelace').setValue('10000000');
         await settle(wrapper);
+        await addToken(wrapper, POLICY, '484f534b59', 5);
 
-        expect(document.querySelector('[data-test="min-utxo-below"]')).toBeNull();
-        const tight = document.querySelector('[data-test="min-utxo-tight"]');
-        expect(tight).not.toBeNull();
-        expect(tight.textContent).toContain('You can create it anyway');
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe('10000000');
     });
 
-    it('says nothing once the amount clears the headroom', async () => {
+    it('raises the field as assets are added and the minimum grows', async () => {
+        window.axios.post.mockResolvedValue(quoteResponse({ min_lovelace: 978370, asset_count: 0, policy_count: 0 }));
         wrapper = mountShow();
 
         await wrapper.find('[data-test="add-code"]').trigger('click');
         await settle(wrapper);
+        // An empty bundle is under the 1 ADA default, so nothing moves.
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe(1000000);
+
+        window.axios.post.mockResolvedValue(quoteResponse({ min_lovelace: 1500000 }));
+        await addToken(wrapper, POLICY, '484f534b59', 5);
+
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe(1500000);
+    });
+
+    it('raises a typed amount on leaving the field, and keeps one at or above the minimum', async () => {
+        wrapper = mountShow();
+
+        await wrapper.find('[data-test="add-code"]').trigger('click');
+        await settle(wrapper);
+
+        await fieldLabelled(wrapper, 'Lovelace').setValue('1000000');
+        await settle(wrapper);
+        expect(document.querySelector('[data-test="min-utxo-below"]')).not.toBeNull();
+
+        await fieldLabelled(wrapper, 'Lovelace').find('input').trigger('blur');
+        await settle(wrapper);
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe(1150770);
 
         await fieldLabelled(wrapper, 'Lovelace').setValue('3000000');
+        await fieldLabelled(wrapper, 'Lovelace').find('input').trigger('blur');
         await settle(wrapper);
-
-        expect(document.querySelector('[data-test="min-utxo-below"]')).toBeNull();
-        expect(document.querySelector('[data-test="min-utxo-tight"]')).toBeNull();
+        expect(fieldLabelled(wrapper, 'Lovelace').props('modelValue')).toBe('3000000');
     });
 
     it('leaves the last known figure alone when the lookup fails', async () => {
@@ -306,7 +284,7 @@ describe('CampaignShow minimum UTxO', () => {
         // A failed lookup must never read as a bundle that costs nothing.
         const hint = document.querySelector('[data-test="min-utxo-hint"]');
         expect(hint).not.toBeNull();
-        expect(hint.textContent).toContain('1.15939 ADA');
+        expect(hint.textContent).toContain('1.15077 ADA');
     });
 
     it('does not reach for a server that is not there', async () => {

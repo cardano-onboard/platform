@@ -13,7 +13,7 @@ the same way in both. The differences are in account management and infrastructu
 | Performance charts & reward details         | ✅            | ✅                |
 | Campaign cost statement (fees, network cost, rewards given away) | ✅ | ✅          |
 | Operator alerts (warns when a campaign is running short) | ✅      | ✅                |
-| Transaction delivery                        | ✅ (managed)  | ⚠️ Needs a backend |
+| Transaction delivery                        | ✅ (managed)  | ✅ Built in        |
 | **User registration & email verification**  | ✅            | ❌ (admin-seeded) |
 | **Password reset**                          | ✅            | ❌                |
 | **Profile page**                            | ✅            | ❌                |
@@ -49,8 +49,14 @@ ship in full on a self-hosted install too. See
 
 ## Transaction delivery on a self-hosted instance
 
-Everything up to the point of paying a claimant runs entirely on your own instance. Putting
-the transaction on chain does not, yet. A self-hosted instance needs one of:
+A self-hosted instance submits its own transactions. By default (`TRANSACTION_BACKEND=native`)
+each campaign gets its own signing key and its own address, and the instance builds, signs and
+submits every payment itself, with no transaction service holding its keys or funds. Chain reads and
+submission go to Koios, its public endpoints or your own through the `KOIOS_*_URL` settings. You supply a wrapping key, two
+recovery key hashes from wallets you hold, and a stake address once, before the first campaign;
+[Configuration](./configuration#native-campaign-wallets) walks through each.
+
+Two alternatives are still available if you would rather not hold keys on your own server:
 
 - **`TRANSACTION_BACKEND=phyrhose`** — talks to the hosted transaction service directly, and
   needs credentials for it.
@@ -58,13 +64,7 @@ the transaction on chain does not, yet. A self-hosted instance needs one of:
   `PROXY_API_TOKEN` generated on a SaaS account, giving you managed delivery without running
   a Cardano node. See the [API reference](./api-reference#proxy-api-saas-sanctum).
 
-There is currently **no option that submits transactions without one of those two**. Running
-the platform fully independently would require it to build, sign and submit its own
-transactions, which is
-[tracked on the roadmap](https://github.com/cardano-onboard/.github/issues/23) and not yet
-built. If that independence is why you are self-hosting, it is better to know now.
-
-::: warning The null backend is not a third option
+::: warning The null backend is not a delivery option
 `TRANSACTION_BACKEND=null` records claims and sends nothing on chain. It exists for testing
 the flow without spending anything, and it is what you get when the variable is unset. The
 application makes this obvious while it is active, with a red test-mode bar on every page and

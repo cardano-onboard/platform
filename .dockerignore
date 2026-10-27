@@ -35,11 +35,6 @@ storage/framework/views/*
 _ide_helper.php
 .phpstorm.meta.php
 
-# Assistant / internal-only files (also stripped by the publish script)
-.claude
-CLAUDE.md
-.scratch
-
 # Docs site build output
 docs/.vitepress/dist
 docs/.vitepress/cache

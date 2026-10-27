@@ -2,7 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import NoticeBar from '@/Components/NoticeBar.vue';
 
-// Shown while BETA_BANNER is on (the default). Read once at mount, so it stays put
+// Shown while BETA_BANNER is on (off by default). Read once at mount, so it stays put
 // across Inertia visits within the page the same way it did as a system bar.
 const page = usePage();
 const show = page.props.beta_banner ?? false;

@@ -54,6 +54,22 @@ campaign limits apply, and any `X-Claim-Client-User-Agent` header is ignored.
 QR codes encode a `web+cardano://claim/v1?...` URI alongside the campaign claim URL so
 compatible wallets/handlers can launch the claim flow directly.
 
+### Claim page
+
+A `GET` to the same address returns a browser page. Which page depends on the campaign's
+**desktop claims** setting, which is off by default and is turned on per campaign.
+
+- Off, or for a campaign id that does not exist: a short page saying the link opens in a
+  Cardano wallet app. It carries nothing about the campaign, and the response is the same
+  in both cases.
+- On: a form for the claim code and a button to connect a CIP-30 wallet extension, which
+  supplies the address. There is no field for typing an address. The page posts to the
+  address it was served from, so no cross-origin request is involved, and it carries no
+  campaign data and no code.
+
+The setting changes only this page. The `POST` to the same address accepts claims the same
+way whether the setting is on or off.
+
 ## Code API (Sanctum)
 
 Lets an external event application make a code for an identity it already knows about the
@@ -74,7 +90,7 @@ other:
 | Ability         | Endpoint                                          |
 |-----------------|----------------------------------------------------|
 | `codes:create`  | `POST /api/v1/campaigns/{campaign}/codes`           |
-| `codes:status`  | `GET /api/v1/campaigns/{campaign}/codes/{code}/status` |
+| `codes:status`  | `GET /api/v1/campaigns/{campaign}/codes/{code}/status`, `GET /api/v1/campaigns/{campaign}` |
 | `codes:claim`   | `POST /api/claim/v1/{campaign}` (see [Claiming on an attendee's behalf](#claiming-on-an-attendees-behalf)) |
 
 ### Create a code
@@ -86,7 +102,7 @@ POST /api/v1/campaigns/{campaign}/codes
 | Field       | Required | Description                                                        |
 |-------------|----------|----------------------------------------------------------------------|
 | `reference` | yes      | The caller's own key for whoever this code is for, up to 191 characters from `A-Z a-z 0-9 . _ : -`. |
-| `lovelace`  | yes      | The code's ADA payment, subject to the same minimum-UTxO floor as the campaign page's own form. |
+| `lovelace`  | yes      | The code's ADA payment, at least 1 ADA. It is stored as the higher of this and the exact minimum for the tokens, so a request for 1 ADA with a token creates a code at the minimum. |
 | `tokens`    | no       | An array of reward tokens, each `{policy_id, token_id, quantity}`. `policy_id` must be exactly 56 hex characters, `token_id` even-length hex of at most 64 characters, and `quantity` at least 1. |
 
 `reference` makes a retried request safe: sending the same reference again returns the
@@ -124,7 +140,35 @@ GET /api/v1/campaigns/{campaign}/codes/{code}/status
 
 Where a code has been claimed more than once, the most recent claim is what is reported.
 
-Both endpoints are rate-limited per token, create and status counted separately, so
+Asking about a claim that has been sent but has no `transaction_hash` yet also queues a check
+with the transaction backend. The response does not wait for it: it reports the claim as it
+stands, and a later poll carries the hash once the check has found it. Checks are limited to
+one per campaign every `CLAIM_CHECK_DEBOUNCE_SECONDS` (15 by default), so polling faster than
+that does not confirm a claim sooner.
+
+### Read a campaign
+
+```
+GET /api/v1/campaigns/{campaign}
+```
+
+Requires the `codes:status` ability, so a token that can already check a code's status can confirm which campaign it is pointed at without being reissued. A token only ever sees its owner's campaigns. Returns `200` with:
+
+| Field                  | Description                                                           |
+|------------------------|-------------------------------------------------------------------------|
+| `id`                   | The campaign's id.                                                     |
+| `name`                 | The campaign's name.                                                   |
+| `network`              | `mainnet`, `preprod` or `preview`.                                     |
+| `start_date`, `end_date` | The first and last day claims are accepted, as `YYYY-MM-DD`.         |
+| `status`               | `active`, `upcoming`, `ended` or `draft`.                              |
+| `claims_open`          | `true` only while `status` is `active`.                                |
+| `claims_closed_reason` | `null` while claims are open, otherwise the same value as `status`.    |
+| `funding_address`      | The campaign's wallet address, the one its owner sends the campaign's tokens and ADA to, or `null` when it has none. |
+| `tokens`               | The distinct `{policy_id, token_id, quantity}` combinations on the campaign's codes, quantity being the amount one claim pays. Empty when no code carries a token. |
+
+A campaign that does not exist and one that belongs to another account answer identically: `404` with the JSON body `{"message": "...", "code": "campaign_not_found"}`. The `code` field tells that answer apart from a host that has no such route, which returns a plain `404` without it.
+
+The endpoints are rate-limited per token. Create is counted separately from status and campaign reads, which share one limit, so
 polling status cannot use up a token's ability to create the next code
 (see [Limits & rate limiting](./configuration#limits-rate-limiting)).
 

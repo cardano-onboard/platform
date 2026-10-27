@@ -15,15 +15,10 @@ use App\Support\MinUtxo;
  * code, editing one and the campaign's funding figures all come through here, so they
  * cannot drift apart.
  *
- * Three states, and the difference between the last two is the whole point:
- *
- *   below_minimum  the chain will not accept this output at all;
- *   tight          it will be accepted, and the recipient will not be able to spend it
- *                  without ADA they do not have;
- *   ok             there is room to move.
- *
- * Only the first is a refusal. A tight reward is a decision an operator is allowed to
- * make, so it is reported and never corrected on their behalf.
+ * A reward is stored at the higher of what the operator entered and the exact minimum for
+ * its assets, so nothing this application creates or edits is ever below the minimum.
+ * The one state still reported is below_minimum, for a code stored before that rule: the
+ * chain will not accept its output at all, and the operator has to change the code.
  */
 class MinUtxoService
 {
@@ -35,30 +30,37 @@ class MinUtxoService
     /**
      * The whole answer for one bundle, and for a proposed amount when there is one.
      *
+     * `min_lovelace` is the exact ledger minimum for the output under the network's
+     * current coins-per-byte: the smallest amount the chain accepts, so one lovelace less
+     * is refused and one more is a lovelace the recipient was not owed. Pass the
+     * recipient's address to size the output for it; without one the configured address
+     * length stands in.
+     *
      * @param  array<int, array{policy?: ?string, asset?: ?string, quantity?: int|string|null}>  $assets
      * @return array{
-     *     min_lovelace: int, headroom_lovelace: int, recommended_lovelace: int,
+     *     min_lovelace: int,
      *     coins_per_utxo_byte: int, source: string, asset_count: int, policy_count: int,
      *     output_bytes: int, state: ?string, warning: ?string
      * }
      */
-    public function quote(array $assets, string $network, ?int $lovelace = null): array
+    public function quote(array $assets, string $network, ?int $lovelace = null, ?string $address = null): array
     {
         $parameters = $this->parametersFor($network);
         $coinsPerByte = $parameters['coins_per_utxo_byte'];
 
-        $min = MinUtxo::forBundle($assets, $coinsPerByte);
-        $headroom = MinUtxo::headroom();
+        // The recipient's own address when it is known, and the configured stand-in when
+        // it is not, which is every time a code is priced before anyone has claimed it.
+        $addressBytes = $address === null ? null : MinUtxo::addressBytesFor($address);
+
+        $min = MinUtxo::forBundle($assets, $coinsPerByte, $addressBytes);
 
         $quote = [
             'min_lovelace' => $min,
-            'headroom_lovelace' => $headroom,
-            'recommended_lovelace' => $min + $headroom,
             'coins_per_utxo_byte' => $coinsPerByte,
             'source' => $parameters['source'],
             'asset_count' => $this->assetCount($assets),
             'policy_count' => MinUtxo::policyCount($assets),
-            'output_bytes' => MinUtxo::outputBytes($assets),
+            'output_bytes' => MinUtxo::outputBytes($assets, $addressBytes, $min),
             'state' => null,
             'warning' => null,
         ];
@@ -67,7 +69,7 @@ class MinUtxoService
             return $quote;
         }
 
-        $quote['state'] = $this->state($lovelace, $min, $headroom);
+        $quote['state'] = $lovelace < $min ? 'below_minimum' : 'ok';
         $quote['warning'] = $this->warning($quote['state'], $lovelace, $quote);
 
         return $quote;
@@ -84,34 +86,24 @@ class MinUtxoService
     }
 
     /**
-     * A validation rule that refuses a reward the chain itself would refuse.
+     * What a code is stored at: the higher of the entered amount and the exact minimum for
+     * its assets, so a reward is never below what the chain accepts and never above what
+     * the operator asked for unless the assets demand it.
      *
-     * The floor is not a policy of ours. An output has to hold enough ADA to pay for the
-     * bytes it occupies, and one carrying a native token needs more than the flat 1 ADA
-     * this form used to accept, so a code set below it was a payment that could be
-     * created, printed on a sticker, scanned at a booth and never sent.
+     * Shared by every path that accepts a reward for a code (the campaign page's create and
+     * edit forms, the bulk import and the code-creation API) so the rule cannot drift
+     * between them. Sized with the configured address length, the stand-in for a code
+     * nobody has claimed yet.
      *
-     * Only the chain's own floor is enforced here. A reward that clears it but leaves the
-     * recipient nothing to pay a fee with is warned about after the fact, not refused: it
-     * is a legitimate choice, and an operator handing out a fixed amount is entitled to
-     * make it.
-     *
-     * Shared by every path that accepts a reward for a code — the campaign page's create
-     * and edit forms, and the code-creation API — so the floor cannot drift between them.
+     * @param  array<int, array{policy?: ?string, asset?: ?string, quantity?: int|string|null}>  $assets
      */
-    public function minimumRule(array $bundle, string $network): callable
+    public function effectiveLovelace(array $assets, string $network, int $lovelace): int
     {
-        return function (string $attribute, $value, callable $fail) use ($bundle, $network) {
-            if ($bundle === []) {
-                return;
-            }
+        if ($assets === []) {
+            return $lovelace;
+        }
 
-            $quote = $this->quote($bundle, $network, (int) $value);
-
-            if ($quote['state'] === 'below_minimum') {
-                $fail($quote['warning']);
-            }
-        };
+        return max($lovelace, MinUtxo::forBundle($assets, $this->coinsPerUtxoByte($network)));
     }
 
     /**
@@ -179,18 +171,9 @@ class MinUtxoService
         return $this->parameters[$network];
     }
 
-    private function state(int $lovelace, int $min, int $headroom): string
-    {
-        if ($lovelace < $min) {
-            return 'below_minimum';
-        }
-
-        return $lovelace < $min + $headroom ? 'tight' : 'ok';
-    }
-
     private function warning(string $state, int $lovelace, array $quote): ?string
     {
-        if ($state === 'ok') {
+        if ($state !== 'below_minimum') {
             return null;
         }
 
@@ -198,18 +181,8 @@ class MinUtxoService
         $min = self::ada($quote['min_lovelace']);
         $paid = self::ada($lovelace);
 
-        if ($state === 'below_minimum') {
-            return "This code pays {$paid} ADA. An output carrying {$assets} has to hold at least "
-                ."{$min} ADA, so the chain will reject the payment and nobody will be paid.";
-        }
-
-        $spare = self::ada($lovelace - $quote['min_lovelace']);
-        $recommended = self::ada($quote['recommended_lovelace']);
-
-        return "This code pays {$paid} ADA and the minimum for {$assets} is {$min} ADA, which leaves "
-            ."{$spare} ADA of room. A claimant whose first wallet is the one they opened at your booth has "
-            .'nothing else to pay a fee with, so that is as far as their tokens will travel. Set it to '
-            ."{$recommended} ADA or more to give them room to move.";
+        return "This code pays {$paid} ADA. An output carrying {$assets} has to hold at least "
+            ."{$min} ADA, so the chain will reject the payment and nobody will be paid.";
     }
 
     private function assetCount(array $assets): int

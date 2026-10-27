@@ -92,9 +92,9 @@ class AnalyzeCampaignOnboardingTest extends TestCase
     public function test_a_claim_confirmed_by_the_run_is_measured_by_the_same_run(): void
     {
         $stake = 'stake1u'.str_repeat('a', 50);
-        $claim = $this->claim('purchase-1', $stake);
+        $claim = $this->claim('1001', $stake);
 
-        $this->fakeBackendAndChain(['purchase-1' => 'completed']);
+        $this->fakeBackendAndChain(['1001' => 'completed']);
 
         $this->analyze();
 
@@ -119,12 +119,12 @@ class AnalyzeCampaignOnboardingTest extends TestCase
     public function test_a_claim_that_will_not_confirm_is_absent_and_counted(): void
     {
         $confirmed = 'stake1u'.str_repeat('b', 50);
-        $this->claim('purchase-1', $confirmed);
-        $this->claim('purchase-2', 'stake1u'.str_repeat('c', 50));
+        $this->claim('1001', $confirmed);
+        $this->claim('1002', 'stake1u'.str_repeat('c', 50));
 
         $this->fakeBackendAndChain([
-            'purchase-1' => 'completed',
-            'purchase-2' => 'processing',
+            '1001' => 'completed',
+            '1002' => 'processing',
         ]);
 
         $this->analyze();
@@ -188,9 +188,9 @@ class AnalyzeCampaignOnboardingTest extends TestCase
      */
     public function test_a_status_pass_does_not_run_while_another_is_in_flight(): void
     {
-        $this->claim('purchase-1', 'stake1u'.str_repeat('f', 50));
+        $this->claim('1001', 'stake1u'.str_repeat('f', 50));
 
-        $this->fakeBackendAndChain(['purchase-1' => 'completed']);
+        $this->fakeBackendAndChain(['1001' => 'completed']);
 
         $held = Cache::lock('claim-status-check:'.$this->campaign->id, 300);
         $this->assertTrue($held->get());
@@ -214,7 +214,7 @@ class AnalyzeCampaignOnboardingTest extends TestCase
      */
     public function test_the_confirmation_pass_announces_itself_on_the_task_row(): void
     {
-        $this->claim('purchase-1', 'stake1u'.str_repeat('h', 50));
+        $this->claim('1001', 'stake1u'.str_repeat('h', 50));
 
         $task = CampaignTask::claim(
             $this->campaign,
@@ -263,9 +263,9 @@ class AnalyzeCampaignOnboardingTest extends TestCase
 
     public function test_a_status_pass_runs_once_the_lock_is_free(): void
     {
-        $claim = $this->claim('purchase-1', 'stake1u'.str_repeat('g', 50));
+        $claim = $this->claim('1001', 'stake1u'.str_repeat('g', 50));
 
-        $this->fakeBackendAndChain(['purchase-1' => 'completed']);
+        $this->fakeBackendAndChain(['1001' => 'completed']);
 
         $stats = (new ClaimStatusChecker)->check($this->campaign->fresh());
 

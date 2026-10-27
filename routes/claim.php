@@ -18,3 +18,9 @@ use Illuminate\Support\Facades\Route;
 Route::post('/v1/{campaign}', [CodeController::class, 'claim'])
     ->middleware('throttle:claim-api')
     ->name('claim.v1.short');
+
+// The page a recipient opens in a desktop browser, at the same address as the endpoint
+// above so it posts to the host it was served from.
+Route::get('/v1/{campaign}', [CodeController::class, 'claimPage'])
+    ->middleware(['web', 'throttle:claim-page'])
+    ->name('claim.page.short');

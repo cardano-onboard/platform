@@ -273,7 +273,10 @@ class NetworkAllowlistTest extends TestCase
 
     public function test_dashboard_carries_no_mainnet_hint_when_unset_even_if_mainnet_is_excluded(): void
     {
-        config(['cardano.allowed_networks' => ['preprod', 'preview']]);
+        config([
+            'cardano.allowed_networks' => ['preprod', 'preview'],
+            'cardano.mainnet_app_url' => null,
+        ]);
 
         $this->actingAs(User::factory()->create())
             ->get(route('dashboard'))

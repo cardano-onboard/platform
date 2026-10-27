@@ -6,7 +6,7 @@ use App\Models\Campaign;
 use App\Models\Code;
 use App\Models\User;
 use App\Models\Wallet;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
@@ -21,7 +21,7 @@ use Tests\DuskTestCase;
  */
 class CspTest extends DuskTestCase
 {
-    use DatabaseMigrations;
+    use DatabaseTruncation;
 
     /**
      * Assert the browser console logged no CSP violations since the last check.

@@ -196,6 +196,106 @@ final class Pricing
         return $price;
     }
 
+    /**
+     * What the nth paid claim of a campaign pays on a path that collects in band and builds its
+     * own transactions, in lovelace.
+     *
+     * The tiers apply marginally here. The claim's ordinal alone decides its rate: the claims below
+     * the second tier's first ordinal pay the first tier, and so on up the schedule, whatever the campaign goes on to
+     * pay. Nothing is repriced afterwards, so a rate is stamped on the claim when it is paid and
+     * left there. A pack of credits takes the tier of the pack instead, which is unitPrice().
+     *
+     * Null where the path has no rates or there is no such ordinal. The schedule has to start at
+     * claim 1; scheduleProblem() says when it does not.
+     */
+    public static function marginalRate(string $path, int $ordinal): ?int
+    {
+        $tiers = (array) config("pricing.paths.{$path}.tiers", []);
+
+        if ($tiers === [] || $ordinal < 1) {
+            return null;
+        }
+
+        ksort($tiers);
+        $rate = null;
+
+        foreach ($tiers as $from => $tierRate) {
+            if ($ordinal >= (int) $from) {
+                $rate = (int) $tierRate;
+            }
+        }
+
+        return $rate;
+    }
+
+    /**
+     * What the claims after the first $paid, $count of them, pay between them: the marginal
+     * schedule summed over those ordinals.
+     *
+     * Summed a tier at a time rather than a claim at a time, because the funding estimate asks it
+     * for every remaining claim of a campaign that may hold a million codes.
+     */
+    public static function marginalTotal(string $path, int $paid, int $count): ?int
+    {
+        $tiers = (array) config("pricing.paths.{$path}.tiers", []);
+
+        if ($tiers === []) {
+            return null;
+        }
+
+        if ($count < 1) {
+            return 0;
+        }
+
+        ksort($tiers);
+        $starts = array_map('intval', array_keys($tiers));
+        $rates = array_map('intval', array_values($tiers));
+        $first = $paid + 1;
+        $last = $paid + $count;
+        $total = 0;
+
+        foreach ($starts as $i => $start) {
+            $from = max($start, $first);
+            $to = isset($starts[$i + 1]) ? min($starts[$i + 1] - 1, $last) : $last;
+
+            if ($to >= $from) {
+                $total += ($to - $from + 1) * $rates[$i];
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Why a path's tier schedule cannot price every claim, or null when it can.
+     *
+     * A claim's rate is the tier its ordinal falls in, so the schedule has to begin at claim 1 and
+     * hold whole, non-negative lovelace. A schedule that starts later leaves the first claims with
+     * no rate, and a claim with no rate cannot be paid in a payout that collects the fee.
+     */
+    public static function scheduleProblem(string $path): ?string
+    {
+        $tiers = (array) config("pricing.paths.{$path}.tiers", []);
+
+        if ($tiers === []) {
+            return null;
+        }
+
+        ksort($tiers);
+
+        if ((int) array_key_first($tiers) !== 1) {
+            return sprintf('The tiers for the %s path start at claim %d, and the first tier has to start at claim 1.', $path, (int) array_key_first($tiers));
+        }
+
+        foreach ($tiers as $rate) {
+            if (! is_int($rate) || $rate < 0) {
+                return sprintf('A tier rate for the %s path is %s, and a rate is a whole number of lovelace of at least 0.', $path, json_encode($rate));
+            }
+        }
+
+        return null;
+    }
+
     /** What a whole pack costs, or null where the path is unpriced. */
     public static function packPrice(string $path, int $credits): int|string|null
     {

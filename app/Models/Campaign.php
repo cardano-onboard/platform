@@ -30,7 +30,23 @@ class Campaign extends Model
         'network',
         'txn_msg',
         'nmkr_api_key',
+        'expiry_slot',
+        'expiry_at',
+        'funding_path',
+        'customer_key_hash',
+        'customer_reward_address',
     ];
+
+    protected static function booted(): void
+    {
+        // The expiry is inside the campaign's address and in the wallet's recovery record, so once
+        // it is set it never changes. A changed column would silently diverge from the script.
+        static::updating(function (self $campaign): void {
+            if ($campaign->getOriginal('expiry_slot') !== null && $campaign->isDirty('expiry_slot')) {
+                throw new \LogicException('A campaign\'s expiry slot is inside its address and cannot be changed.');
+            }
+        });
+    }
 
     protected $hidden = [
         'deleted_at',

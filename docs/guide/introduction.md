@@ -2,7 +2,7 @@
 
 **Onboard.Ninja** is a platform for running Cardano token airdrops. You create a
 **campaign**, generate **claim codes**, and share them (often as QR codes). Recipients
-enter a code and their wallet address, and the platform delivers the reward — ADA and/or
+claim a code with their wallet, and the platform delivers the reward — ADA and/or
 native tokens — to their wallet.
 
 It's designed for events, community drops, and onboarding new users to Cardano without
@@ -18,7 +18,7 @@ asking them to understand smart contracts.
    limits and reward configuration.
 4. **Share QR codes** — download print-ready QR codes that deep-link recipients straight
    into the claim flow.
-5. **Recipients claim** — they scan, enter their wallet address, and receive the reward.
+5. **Recipients claim** — their wallet scans the QR code and submits its address, and they receive the reward.
 6. **Monitor & refund** — watch claims roll in on the performance charts, then refund any
    unclaimed balance when the campaign ends.
 

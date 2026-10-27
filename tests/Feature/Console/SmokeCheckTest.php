@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -218,9 +219,7 @@ class SmokeCheckTest extends TestCase
         return ['not found' => [404], 'server error' => [500], 'forbidden' => [403]];
     }
 
-    /**
-     * @dataProvider codeApiStatuses
-     */
+    #[DataProvider('codeApiStatuses')]
     public function test_a_code_api_answering_anything_but_401_fails(int $status): void
     {
         $this->deployment['code_api_status'] = $status;

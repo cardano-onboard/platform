@@ -22,9 +22,10 @@ the registry recognizes also show their ticker and logo.
 
 ## Refreshing claim status
 
-Claims are delivered asynchronously and their on-chain status is checked periodically by
-the scheduler. To refresh immediately, click **Check claims** above the codes table, and
-the platform re-queries the backend and updates each claim's status. The check runs in the
+Claims are delivered asynchronously. The platform checks their on-chain status shortly after
+sending them, whenever a status request asks about one still waiting, and on the scheduler
+where one runs. To refresh immediately, click **Check claims** above the codes table, and the
+platform re-queries the backend and updates each claim's status. The check runs in the
 background and shows on the campaign page with a count of the claims it has asked about.
 When it finishes, the claims on the page update without a reload. If it could not finish,
 the page says why. Only one check runs per campaign at a time, so the button stays busy

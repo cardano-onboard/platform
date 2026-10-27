@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
 use App\Support\MinUtxo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -31,7 +32,7 @@ class ProxyBackend implements TransactionBackend
     {
         $payload = [
             'campaignId' => $campaignId,
-            'recipients' => $recipients,
+            'recipients' => array_map(static fn (array $recipient): array => Arr::except($recipient, 'claimId'), $recipients),
             'network' => $network,
         ];
 

@@ -34,6 +34,11 @@ class CampaignFactory extends Factory
         return $this->state(['one_per_wallet' => true]);
     }
 
+    public function desktopClaims(): static
+    {
+        return $this->state(['desktop_claims_enabled' => true]);
+    }
+
     public function expired(): static
     {
         return $this->state([

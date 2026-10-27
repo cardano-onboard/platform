@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Cardano\AssetName;
 use App\Exceptions\ClaimException;
 use App\Http\Resources\TokenCollection;
+use App\Jobs\CheckClaims;
 use App\Jobs\ProcessClaims;
 use App\Jobs\ProcessUploadedCodes;
 use App\Models\Campaign;
 use App\Models\CampaignTask;
+use App\Models\Claim;
 use App\Models\Code;
 use App\Models\Partner;
+use App\Models\Reward;
 use App\Services\ClaimClientRecorder;
 use App\Services\CodeCapacity;
 use App\Services\CreditLedger;
@@ -30,6 +33,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Throwable;
 
 class CodeController extends Controller
@@ -116,21 +120,23 @@ class CodeController extends Controller
 
         $validated = $request->validate(array_merge([
             'quantity' => 'nullable|integer|min:1|max:500',
-            'lovelace' => [
-                'integer', 'required', 'min:1000000', 'max:45000000000000000',
-                $minUtxo->minimumRule($bundle, $campaign->network),
-            ],
+            'lovelace' => ['integer', 'required', 'min:1000000', 'max:45000000000000000'],
             'perWallet' => 'integer|required|min:0',
             'uses' => 'integer|required|min:1',
             'tokens' => 'nullable|array',
-            'tokens.*.policy_id' => 'required_with:tokens|string|regex:/^[0-9a-fA-F]+$/',
-            'tokens.*.token_id' => 'required_with:tokens|string|regex:/^[0-9a-fA-F]+$/',
+            'tokens.*.policy_id' => ['required_with:tokens', 'string', 'regex:'.Reward::POLICY_HEX],
+            'tokens.*.token_id' => ['required_with:tokens', 'string', 'regex:'.Reward::ASSET_HEX],
             'tokens.*.quantity' => 'required_with:tokens|integer|min:1',
             'nmkr_project_uid' => 'nullable|string|max:255',
             'nmkr_count_nft' => 'nullable|integer|min:0|max:100',
         ], $this->partnerRules($request, $campaign)), $this->partnerMessages());
 
         $partnerId = $this->partnerFor($request, $campaign);
+
+        // What is stored is the higher of the entered amount and the exact minimum for the
+        // assets, so adding a token to a 1 ADA reward raises it rather than refusing it.
+        $entered = (int) $validated['lovelace'];
+        $validated['lovelace'] = $minUtxo->effectiveLovelace($bundle, $campaign->network, $entered);
 
         $quantity = (int) ($validated['quantity'] ?? 1);
 
@@ -170,12 +176,11 @@ class CodeController extends Controller
             'partner_id' => $partnerId,
         ]);
 
-        $quote = $minUtxo->quote($bundle, $campaign->network, (int) $validated['lovelace']);
         $redirect = to_route('campaigns.show', $request->campaign_id);
 
-        return $quote['warning'] === null
+        return $validated['lovelace'] === $entered
             ? $redirect
-            : $redirect->with('message', $quote['warning']);
+            : $redirect->with('message', $this->raisedMessage($entered, $validated['lovelace']));
     }
 
     /**
@@ -213,17 +218,17 @@ class CodeController extends Controller
         );
 
         $validated = $request->validate([
-            'lovelace' => [
-                'integer', 'required', 'min:1000000', 'max:45000000000000000',
-                $minUtxo->minimumRule($bundle, $campaign->network),
-            ],
+            'lovelace' => ['integer', 'required', 'min:1000000', 'max:45000000000000000'],
             'tokens' => 'nullable|array',
-            'tokens.*.policy_id' => 'required_with:tokens|string|regex:/^[0-9a-fA-F]+$/',
-            'tokens.*.token_id' => 'required_with:tokens|string|regex:/^[0-9a-fA-F]+$/',
+            'tokens.*.policy_id' => ['required_with:tokens', 'string', 'regex:'.Reward::POLICY_HEX],
+            'tokens.*.token_id' => ['required_with:tokens', 'string', 'regex:'.Reward::ASSET_HEX],
             'tokens.*.quantity' => 'required_with:tokens|integer|min:1',
             'nmkr_project_uid' => 'nullable|string|max:255',
             'nmkr_count_nft' => 'nullable|integer|min:0|max:100',
         ]);
+
+        $entered = (int) $validated['lovelace'];
+        $validated['lovelace'] = $minUtxo->effectiveLovelace($bundle, $campaign->network, $entered);
 
         // Claims that have been accepted and not yet submitted. They will be paid the new
         // reward, because nothing has gone out for them yet and the snapshot is written
@@ -266,7 +271,7 @@ class CodeController extends Controller
 
         return to_route('campaigns.show', $campaign->id)
             ->with('message', $this->editMessage(
-                $minUtxo->quote($bundle, $campaign->network, (int) $validated['lovelace']),
+                $validated['lovelace'] === $entered ? null : $this->raisedMessage($entered, $validated['lovelace']),
                 $pending,
                 $settled,
                 $remaining,
@@ -282,7 +287,7 @@ class CodeController extends Controller
      * Claims accepted and not yet sent will get the new reward, which is a surprise worth
      * naming. A code with no uses left reaches nobody at all.
      */
-    private function editMessage(array $quote, int $pending, int $settled, ?int $remaining): string
+    private function editMessage(?string $raised, int $pending, int $settled, ?int $remaining): string
     {
         $parts = ['Rewards updated.'];
 
@@ -302,11 +307,20 @@ class CodeController extends Controller
             $parts[] = 'This code has no uses left, so nobody else can claim it.';
         }
 
-        if ($quote['warning'] !== null) {
-            $parts[] = $quote['warning'];
+        if ($raised !== null) {
+            $parts[] = $raised;
         }
 
         return implode(' ', $parts);
+    }
+
+    /** Said when the stored reward is higher than the one typed, so the change is not a surprise. */
+    private function raisedMessage(int $entered, int $stored): string
+    {
+        $ada = static fn (int $lovelace) => rtrim(rtrim(number_format($lovelace / 1_000_000, 6, '.', ''), '0'), '.');
+
+        return 'The reward was raised from '.$ada($entered).' ADA to '.$ada($stored)
+            .' ADA, the least an output carrying these assets can hold.';
     }
 
     /**
@@ -538,6 +552,28 @@ class CodeController extends Controller
     }
 
     /**
+     * What a browser gets at the claim URL. The campaign is looked up here rather than bound
+     * in the route, so an unknown id, a deleted campaign and a campaign that has not turned
+     * the desktop page on all answer with the same page, and the page reveals nothing about
+     * which it was. That page names no campaign. Only a campaign that opted in gets the
+     * claim page, which carries no campaign data and no code either: the recipient types
+     * the code, connects a wallet extension, and the page posts to this same address.
+     */
+    public function claimPage(string $campaign)
+    {
+        $enabled = Campaign::whereKey($campaign)->where('desktop_claims_enabled', true)->exists();
+
+        return Inertia::render($enabled ? 'Claim' : 'ClaimInWallet', [
+            'meta' => [
+                'title' => $enabled ? 'Claim your reward' : 'Open this link in a Cardano wallet',
+                'description' => $enabled
+                    ? 'Enter your claim code and connect your wallet to receive your reward.'
+                    : 'This link opens in a Cardano wallet app.',
+            ],
+        ]);
+    }
+
+    /**
      * @throws ClaimException
      */
     public function claim(Request $request, Campaign $campaign, ClaimClientRecorder $clients, CreditLedger $ledger)
@@ -706,30 +742,42 @@ class CodeController extends Controller
                 if ($my_claim) {
                     if ($my_claim->transaction_id) {
 
-                        if (is_numeric($my_claim->transaction_id) && $my_claim->transaction_hash === null) {
+                        if (is_numeric($my_claim->transaction_id) && $my_claim->status !== 'completed' && $my_claim->transaction_hash === null) {
                             Log::debug('Lookup the transaction hash here!');
                             $txn_status = $phyrhose->get('firehose/purchaseStatus?purchaseId='.$my_claim->transaction_id)
                                 ->json();
                             if (($txn_status['status'] ?? null) === 'ok' && isset($txn_status['data'][1])) {
                                 $status = $txn_status['data'][1];
-                                switch ($status['status']) {
+                                switch ($status['status'] ?? null) {
                                     case 'completed':
-                                        $my_claim->transaction_hash = $status['txId'];
-                                        $my_claim->save();
+                                        $this->recordCompleted($my_claim, $status['txId'] ?? null, $campaign->id);
                                         break;
                                     case 'timeout':
+                                        // Only a claim still waiting is sent again. A failed or completed claim
+                                        // keeps its transaction id, because the transaction may have been paid.
+                                        if (! $my_claim->isAwaitingConfirmation()) {
+                                            break;
+                                        }
+
                                         Log::error("Have a timeout status for {$code->code} with Claim ID: {$my_claim->id}. Set the transaction_id to null and try again?");
                                         $my_claim->transaction_id = null;
                                         $my_claim->save();
                                         ProcessClaims::dispatch($campaign->id)
-                                            ->delay((int) config('cardano.push_delay', 5) * 60);
+                                            ->delay((int) config('cardano.push_delay_seconds', 30));
                                         break;
                                     default:
-                                        Log::error("Unknown Phyrhose txn status: {$status['status']}", ['phyrhose_response' => $txn_status]);
+                                        Log::error('Unknown Phyrhose txn status: '.($status['status'] ?? 'missing'), ['phyrhose_response' => $txn_status]);
                                         break;
                                 }
                             }
                             Log::debug('Phyrhose status:', compact('txn_status'));
+                        }
+
+                        // A wallet repeating its claim is asking where the reward has got
+                        // to. The lookup above only answers for some transaction ids, so
+                        // queue the campaign's debounced check too, without waiting on it.
+                        if ($my_claim->isAwaitingConfirmation()) {
+                            CheckClaims::requestSoon($campaign->id);
                         }
 
                         return $logResponse([
@@ -745,7 +793,7 @@ class CodeController extends Controller
 
                         try {
                             $dispatch_result = ProcessClaims::dispatch($campaign->id)
-                                ->delay((int) config('cardano.push_delay', 5) * 60);
+                                ->delay((int) config('cardano.push_delay_seconds', 30));
 
                             Log::info('Job dispatched?', ['result' => $dispatch_result]);
                         } catch (Throwable $e) {
@@ -788,7 +836,14 @@ class CodeController extends Controller
                 // this campaign's own bucket, so what it cost is recorded here rather
                 // than debited anywhere. Nulls on every other path, where the cost is the
                 // credit and the bucket pays only for what goes on chain.
-                Pricing::inBandCharge(Pricing::pathFor($campaign)),
+                //
+                // Nothing for a native campaign, whether or not it collects the fee. Where it
+                // does, the figure depends on how many claims it has paid before this one, which is
+                // only settled when the claim goes into a payout, so the payout stamps it then.
+                // Where it does not, nothing is ever collected, so there is nothing to record.
+                $campaign->wallet?->backend === 'native'
+                    ? ['revenue_lovelace' => null]
+                    : Pricing::inBandCharge(Pricing::pathFor($campaign)),
                 // Stamped whoever is running this. The chain charges a self-hoster the
                 // same as anybody, and they need it to account for what a campaign spent.
                 ['network_fee_lovelace' => (int) config('cardano.network_fee_lovelace')],
@@ -872,7 +927,7 @@ class CodeController extends Controller
             // reference runs the destructor here, where the application is still
             // standing.
             $pending = ProcessClaims::dispatch($campaign->id)
-                ->delay((int) config('cardano.push_delay', 5) * 60);
+                ->delay((int) config('cardano.push_delay_seconds', 30));
             unset($pending);
 
             $response = [
@@ -905,7 +960,7 @@ class CodeController extends Controller
             if ($my_claim) {
                 if ($my_claim->transaction_id) {
 
-                    if (is_numeric($my_claim->transaction_id) && $my_claim->transaction_hash === null) {
+                    if (is_numeric($my_claim->transaction_id) && $my_claim->status !== 'completed' && $my_claim->transaction_hash === null) {
                         Log::debug('Lookup the transaction hash here!');
                         switch ($campaign->network) {
                             case 'mainnet':
@@ -920,23 +975,34 @@ class CodeController extends Controller
                         }
                         $txn_status = $phyrhose->get('firehose/purchaseStatus?purchaseId='.$my_claim->transaction_id)
                             ->json();
-                        if ($txn_status['status'] === 'ok') {
+                        if (($txn_status['status'] ?? null) === 'ok' && isset($txn_status['data'][1])) {
                             $status = $txn_status['data'][1];
-                            switch ($status['status']) {
+                            switch ($status['status'] ?? null) {
                                 case 'completed':
-                                    $my_claim->transaction_hash = $status['txId'];
-                                    $my_claim->save();
+                                    $this->recordCompleted($my_claim, $status['txId'] ?? null, $campaign->id);
                                     break;
                                 case 'timeout':
+                                    // Only a claim still waiting is sent again. A failed or completed claim
+                                    // keeps its transaction id, because the transaction may have been paid.
+                                    if (! $my_claim->isAwaitingConfirmation()) {
+                                        break;
+                                    }
+
                                     Log::error("Have a timeout status for {$code->code} with Claim ID: {$my_claim->id}. Set the transaction_id to null and try again?");
                                     $my_claim->transaction_id = null;
                                     $my_claim->save();
                                     ProcessClaims::dispatch($campaign->id)
-                                        ->delay((int) config('cardano.push_delay', 5) * 60);
+                                        ->delay((int) config('cardano.push_delay_seconds', 30));
                                     break;
                             }
                         }
                         Log::debug('Phyrhose status:', compact('txn_status'));
+                    }
+
+                    // As above: a repeated claim is a status poll, so queue the campaign's
+                    // debounced check without waiting on it.
+                    if ($my_claim->isAwaitingConfirmation()) {
+                        CheckClaims::requestSoon($campaign->id);
                     }
 
                     $response = [
@@ -957,7 +1023,7 @@ class CodeController extends Controller
 
                     try {
                         $dispatch_result = ProcessClaims::dispatch($campaign->id)
-                            ->delay((int) config('cardano.push_delay', 5) * 60);
+                            ->delay((int) config('cardano.push_delay_seconds', 30));
 
                         Log::info('Job dispatched?', ['result' => $dispatch_result]);
                     } catch (Throwable $e) {
@@ -991,6 +1057,24 @@ class CodeController extends Controller
         ]);
 
         return $logResponse(config('errorcodes.ERROR_NOT_FOUND'));
+    }
+
+    /**
+     * Records the backend's completed answer for a claim a wallet is asking about. An answer
+     * with no hash still completes the claim, because the transaction was paid and a claim
+     * left waiting could be sent again by a later timeout answer.
+     */
+    private function recordCompleted(Claim $claim, mixed $transactionHash, int|string $campaignId): void
+    {
+        if ($claim->markConfirmed(is_string($transactionHash) ? $transactionHash : null)) {
+            return;
+        }
+
+        $claim->markCompletedWithoutHash();
+        Log::warning('Claim lookup: backend reported completed without a transaction hash', [
+            'campaign_id' => $campaignId,
+            'claim_id' => $claim->id,
+        ]);
     }
 
     /**

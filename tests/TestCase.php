@@ -15,6 +15,14 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Feature tests render the page shell without a built frontend, so the job that
+        // runs them does not have to build one. Dusk builds real assets and covers them.
+        $this->withoutVite();
+
+        // withoutVite() also stops the page shell from failing on a component the build
+        // does not contain, so check at render time that the component file exists.
+        config(['inertia.ensure_pages_exist' => true]);
+
         $this->giveThisProcessItsOwnFakeDisks();
     }
 

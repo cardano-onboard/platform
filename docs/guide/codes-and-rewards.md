@@ -15,7 +15,7 @@ On the campaign page, choose **Create Code** and set:
 - **Uses** — how many times the code can be claimed (`0` = unlimited; not recommended).
 - **Claims Per Wallet** — per-wallet limit (`1` = one-per-wallet; `0` = unlimited).
 - **Lovelace** — the ADA reward (1 ADA = 1,000,000 lovelace).
-- **NMKR Project UID / NFTs Per Claim** — optional, to mint an NFT on claim.
+- **NMKR Project UID / NFTs Per Claim** — optional, to mint an NFT on claim. The NMKR API key is the one entered on the campaign.
 
 Submit, and the codes appear in the table. You can filter by **All / Claimed / Unclaimed
 / Available / Exhausted** and search.
@@ -69,23 +69,24 @@ Set the **quantity** and add the token. Repeat for multiple tokens, then create 
 
 Every Cardano output has to hold a minimum amount of ADA, and that minimum rises with what
 is in the output: each policy, each asset and every character of an asset name is more for
-the ledger to store. One token under one policy needs roughly 1.16 ADA. A bundle spread
+the ledger to store. One token under one policy needs about 1.15 ADA. A bundle spread
 across several policies needs more.
 
-The code form works the minimum out from the tokens you have added and states it under the
-**Lovelace** field, along with a suggested amount. A code set below the minimum is refused,
-because the payment could never be submitted: the code would print, scan and fail silently
-at a booth.
+A reward is stored as the higher of the ADA you enter and the exact minimum for its tokens,
+so you never need to work the minimum out yourself. Set the reward to 1 ADA and add a token,
+and the reward rises to the minimum for that token, about 1.15 ADA for one. Set it to 10 ADA
+and add a token or two, and it stays at 10 ADA. The rule is the same wherever a code is made:
+the code form, the edit dialog, a bulk import and the code API.
 
-A code that clears the minimum with nothing left over is allowed, and warned about. The
-recipient can receive it and cannot spend it, because moving a token costs a fee and the
-output is not allowed to drop below its own floor. Somebody claiming on a wallet they
-installed at your table has no other ADA to draw on, so their token stays where you sent
-it. The suggested figure is the minimum plus a whole ADA of room, which is enough to cover
-a fee several times over.
+The code form shows the minimum under the **Lovelace** field and moves the field up to it as
+you add tokens. An amount already above the minimum is left alone, and nothing is ever added
+on top. The 1 ADA floor on the field still applies. A code made from a bulk import file is
+raised the same way, so a file that lists 1 ADA alongside a token is imported at the minimum
+rather than skipped.
 
-The campaign page counts any existing codes that are under their minimum or on it, so
-codes created before this check existed can be found and raised.
+Codes created before this rule can still sit below their minimum. The campaign page counts
+any that are, so they can be found and opened in the edit dialog, which raises them to the
+minimum.
 
 ## Change a code's reward
 
@@ -104,9 +105,8 @@ sent yet. Those claimants have already been shown what they were promised, and t
 receive whatever the code says when the payment is submitted. Rewards are sent in batches a
 few minutes after a claim, so this is a short window rather than a theoretical one.
 
-An edit is checked against the same minimum a new code is. A reward below what the chain
-will accept is refused, and one that leaves the recipient nothing to spend is saved with a
-warning.
+An edit follows the same rule as a new code: a reward below the minimum for its tokens is
+saved at the minimum, and the confirmation says so.
 
 The campaign's funding figures are recalculated from the new reward, so **still needed**
 reflects the change immediately.

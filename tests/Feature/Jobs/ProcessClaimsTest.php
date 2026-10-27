@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ProcessClaimsTest extends TestCase
@@ -25,6 +26,10 @@ class ProcessClaimsTest extends TestCase
         $code = Code::factory()->for($campaign)->create(['lovelace' => 2000000]);
         Reward::factory()->for($code)->create();
         $claim = Claim::factory()->for($code)->create(['transaction_id' => null]);
+
+        // A successful submission queues a status check for later. Held here so it does not
+        // run inline against a backend this test has not faked.
+        Queue::fake();
 
         Http::fake([
             '*pooPurchaseOrder*' => Http::response([

@@ -32,7 +32,7 @@ class CodeApiTest extends TestCase
     private const ASSET = '484f534b59'; // HOSKY
 
     /** What one HOSKY in an output actually costs at mainnet's 4310 coins per byte. */
-    private const ONE_ASSET_MINIMUM = 1_159_390;
+    private const ONE_ASSET_MINIMUM = 1_150_770;
 
     private User $user;
 
@@ -256,14 +256,48 @@ class CodeApiTest extends TestCase
         $this->create(['reference' => 'AZaz09._:-'])->assertStatus(201);
     }
 
-    public function test_a_code_under_the_token_minimum_is_refused(): void
+    public function test_one_ada_with_a_token_is_stored_at_exactly_the_minimum(): void
     {
         $this->create([
             'lovelace' => 1_000_000,
             'tokens' => [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1]],
-        ])->assertStatus(422)->assertJsonValidationErrors('lovelace');
+        ])->assertStatus(201);
 
-        $this->assertSame(0, Code::count());
+        $this->assertSame(self::ONE_ASSET_MINIMUM, (int) Code::first()->lovelace);
+    }
+
+    public function test_ten_ada_with_a_token_stays_ten_ada(): void
+    {
+        $this->create([
+            'lovelace' => 10_000_000,
+            'tokens' => [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1]],
+        ])->assertStatus(201);
+
+        $this->assertSame(10_000_000, (int) Code::first()->lovelace);
+    }
+
+    public function test_repeating_a_raised_request_returns_the_same_code(): void
+    {
+        $payload = [
+            'lovelace' => 1_000_000,
+            'tokens' => [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1]],
+        ];
+
+        $first = $this->create($payload)->assertStatus(201)->json('code');
+        $second = $this->create($payload)->assertStatus(200)->json('code');
+
+        $this->assertSame($first, $second);
+        $this->assertSame(1, Code::count());
+    }
+
+    public function test_the_same_reference_with_a_genuinely_different_amount_still_conflicts(): void
+    {
+        $tokens = [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1]];
+
+        $this->create(['lovelace' => 1_000_000, 'tokens' => $tokens])->assertStatus(201);
+        $this->create(['lovelace' => 5_000_000, 'tokens' => $tokens])->assertStatus(409);
+
+        $this->assertSame(1, Code::count());
     }
 
     public function test_a_code_exactly_on_the_minimum_is_created(): void
@@ -442,19 +476,19 @@ class CodeApiTest extends TestCase
     }
 
     /**
-     * The skip above is for a reference that already has a code, not for validation in
-     * general: a genuinely new reference still has to clear today's live minimum.
+     * A genuinely new reference is stored at today's live minimum when that is higher than
+     * what was sent.
      */
-    public function test_a_new_reference_still_clears_the_live_minimum(): void
+    public function test_a_new_reference_is_raised_to_the_live_minimum(): void
     {
         config(['cardano.min_utxo.coins_per_utxo_byte' => 100_000_000]);
 
         $this->create([
             'lovelace' => self::ONE_ASSET_MINIMUM,
             'tokens' => [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1]],
-        ])->assertStatus(422)->assertJsonValidationErrors('lovelace');
+        ])->assertStatus(201);
 
-        $this->assertSame(0, Code::count());
+        $this->assertGreaterThan(self::ONE_ASSET_MINIMUM, (int) Code::first()->lovelace);
     }
 
     // --- tightened validation on this path only ---
@@ -653,5 +687,115 @@ class CodeApiTest extends TestCase
             'stake_key' => $latest->stake_key,
             'status' => 'completed',
         ]);
+    }
+
+    // --- reading a campaign ---
+
+    private function showCampaign(string $id, ?string $token = null)
+    {
+        return $this->withToken($token ?? $this->token)
+            ->getJson('/api/v1/campaigns/'.$id);
+    }
+
+    public function test_the_owner_reads_their_campaign_with_the_fields_a_caller_confirms_it_by(): void
+    {
+        $a = Code::factory()->for($this->campaign)->create();
+        $a->rewards()->create(['policy_hex' => self::POLICY, 'asset_hex' => self::ASSET, 'quantity' => 3]);
+        $b = Code::factory()->for($this->campaign)->create();
+        $b->rewards()->create(['policy_hex' => self::POLICY, 'asset_hex' => self::ASSET, 'quantity' => 3]);
+
+        $response = $this->showCampaign($this->campaign->id)->assertOk();
+
+        $response->assertExactJson([
+            'id' => $this->campaign->id,
+            'name' => $this->campaign->name,
+            'network' => 'mainnet',
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addMonth()->toDateString(),
+            'status' => 'active',
+            'claims_open' => true,
+            'claims_closed_reason' => null,
+            'funding_address' => $this->campaign->wallet->address,
+            'tokens' => [['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 3]],
+        ]);
+    }
+
+    public function test_a_campaign_that_has_not_started_or_has_ended_says_why_claims_are_closed(): void
+    {
+        $upcoming = Campaign::factory()->for($this->user)->create([
+            'start_date' => now()->addDays(2)->toDateString(),
+            'end_date' => now()->addDays(9)->toDateString(),
+        ]);
+        $ended = Campaign::factory()->for($this->user)->create([
+            'start_date' => now()->subDays(9)->toDateString(),
+            'end_date' => now()->subDays(2)->toDateString(),
+        ]);
+
+        $this->showCampaign($upcoming->id)->assertOk()
+            ->assertJsonPath('claims_open', false)
+            ->assertJsonPath('claims_closed_reason', 'upcoming');
+        $this->showCampaign($ended->id)->assertOk()
+            ->assertJsonPath('claims_open', false)
+            ->assertJsonPath('claims_closed_reason', 'ended');
+    }
+
+    public function test_the_campaign_read_carries_no_wallet_or_other_account_data(): void
+    {
+        $body = $this->showCampaign($this->campaign->id)->assertOk()->json();
+
+        $this->assertSame(
+            ['claims_closed_reason', 'claims_open', 'end_date', 'funding_address', 'id', 'name', 'network', 'start_date', 'status', 'tokens'],
+            collect($body)->keys()->sort()->values()->all()
+        );
+    }
+
+    public function test_another_users_campaign_and_an_unknown_one_answer_identically(): void
+    {
+        $foreign = Campaign::factory()->for(User::factory())->create(['name' => 'Someone Else']);
+
+        $foreignResponse = $this->showCampaign($foreign->id)->assertStatus(404)
+            ->assertJsonPath('code', 'campaign_not_found');
+        $unknownResponse = $this->showCampaign('01ARZ3NDEKTSV4RRFFQ69G5FAV')->assertStatus(404)
+            ->assertJsonPath('code', 'campaign_not_found');
+
+        $this->assertSame($unknownResponse->getContent(), $foreignResponse->getContent());
+        $this->assertStringNotContainsString('Someone Else', $foreignResponse->getContent());
+    }
+
+    public function test_reading_a_campaign_needs_the_status_ability(): void
+    {
+        $createOnly = $this->user->createToken('create-only', ['codes:create'])->plainTextToken;
+
+        $this->showCampaign($this->campaign->id, $createOnly)->assertStatus(403);
+    }
+
+    public function test_reading_a_campaign_without_a_token_is_401(): void
+    {
+        $this->getJson('/api/v1/campaigns/'.$this->campaign->id)->assertStatus(401);
+    }
+
+    public function test_a_foreign_campaign_and_an_unknown_one_are_answered_alike_on_create_and_status(): void
+    {
+        $foreign = Campaign::factory()->for(User::factory())->create();
+        $unknown = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+
+        $createForeign = $this->withToken($this->token)->postJson('/api/v1/campaigns/'.$foreign->id.'/codes', ['reference' => 'r-1', 'lovelace' => 2000000]);
+        $createUnknown = $this->withToken($this->token)->postJson('/api/v1/campaigns/'.$unknown.'/codes', ['reference' => 'r-1', 'lovelace' => 2000000]);
+        $statusForeign = $this->withToken($this->token)->getJson('/api/v1/campaigns/'.$foreign->id.'/codes/ABC/status');
+        $statusUnknown = $this->withToken($this->token)->getJson('/api/v1/campaigns/'.$unknown.'/codes/ABC/status');
+
+        $createForeign->assertStatus(404);
+        $statusForeign->assertStatus(404);
+        $this->assertSame($createUnknown->getContent(), $createForeign->getContent());
+        $this->assertSame($statusUnknown->getContent(), $statusForeign->getContent());
+    }
+
+    public function test_the_campaign_read_gives_the_funding_address_and_null_when_there_is_no_wallet(): void
+    {
+        $this->assertNotEmpty($this->campaign->wallet->address);
+        $this->showCampaign($this->campaign->id)->assertJsonPath('funding_address', $this->campaign->wallet->address);
+
+        $bare = Campaign::factory()->for($this->user)->create();
+        $this->showCampaign($bare->id)->assertOk()->assertJsonPath('funding_address', null);
     }
 }

@@ -6,6 +6,7 @@ use App\Jobs\CreateCampaignBucket;
 use App\Models\Campaign;
 use App\Models\Claim;
 use App\Models\Code;
+use App\Models\Partner;
 use App\Models\Reward;
 use App\Models\User;
 use App\Services\CreditLedger;
@@ -37,6 +38,7 @@ class SeedDemoCampaign extends Command
         {--credits=0 : Grant the owner this many credits, so the ledger and the balance have something in them}
         {--held=0 : Leave this many claims held for credit, so the holds and the operator alert have something to show}
         {--spend-limit= : Cap the campaign at this many claims}
+        {--no-partners : Leave every code unassigned, so the partner panel shows its empty state}
         {--fresh : Delete previously-seeded demo campaigns for this user first}';
 
     protected $description = 'Seed a demo campaign that exercises every panel, so a database wipe costs one command rather than an evening';
@@ -161,6 +163,9 @@ class SeedDemoCampaign extends Command
         // ── Build claim slots, leaving ~25% of codes unclaimed for bucket variety ──
         shuffle($codes);
         $claimable = array_slice($codes, 0, (int) ceil(count($codes) * 0.75));
+        $partnerMix = $this->option('no-partners')
+            ? []
+            : $this->seedPartners($campaign, $claimable, array_slice($codes, count($claimable)));
         $slots = [];
         foreach ($claimable as $c) {
             for ($u = 0; $u < $c['uses']; $u++) {
@@ -238,6 +243,7 @@ class SeedDemoCampaign extends Command
             ['Codes', $codeCount],
             ['Reward mix', "ADA-only {$rewardMix['ada-only']} · +{$tokenA} {$rewardMix[$tokenA]} · +{$tokenB} {$rewardMix[$tokenB]} · +BOTH {$rewardMix['both']}"],
             ['Claims', count($slots)],
+            ['Partners', $partnerMix === [] ? '—' : collect($partnerMix)->map(fn ($n, $name) => "{$name} {$n}")->implode(' · ')],
             ['Wallet mix', $walletMix === [] ? '—' : collect($walletMix)->map(fn ($r) => $r['client'].' '.$r['claims'])->implode(' · ')],
             ['Window', $days.' days'],
             ['View at', url("/campaigns/{$campaign->id}")],
@@ -275,6 +281,58 @@ class SeedDemoCampaign extends Command
                 'quantity' => 1,
             ]);
         }
+    }
+
+    /**
+     * Hand the codes out through partners, so the partner panel and filter have something
+     * to compare.
+     *
+     * The codes that will be claimed are split unevenly across three partners with a slice
+     * left unassigned, because a real event always has codes nobody recorded handing out.
+     * The fourth partner is given codes only from those nobody will claim, so the panel
+     * always has a partner who produced nothing, which is the row an organiser acts on.
+     *
+     * @param  list<array{id: int, uses: int}>  $claimable
+     * @param  list<array{id: int, uses: int}>  $unclaimed
+     * @return array<string, int> codes per partner name
+     */
+    private function seedPartners(Campaign $campaign, array $claimable, array $unclaimed): array
+    {
+        $this->info('Handing codes out through partners...');
+
+        // Share of the claimable codes each partner gets. What is left stays unassigned.
+        $shares = [
+            ['Booth staff', 'staff', 40],
+            ['Sponsor lanyards', 'print', 25],
+            ['Community meetup', 'partner', 15],
+        ];
+
+        $mix = [];
+        $offset = 0;
+        foreach ($shares as [$name, $kind, $percent]) {
+            $slice = array_slice($claimable, $offset, (int) floor(count($claimable) * $percent / 100));
+            $offset += count($slice);
+            $mix[$name] = $this->assignPartner($campaign, $name, $kind, $slice);
+        }
+
+        // Half of the codes nobody will claim, so the rest of the unclaimed codes still
+        // show up against the unassigned row.
+        $idle = array_slice($unclaimed, 0, intdiv(count($unclaimed) + 1, 2));
+        if ($idle !== []) {
+            $mix['Newsletter'] = $this->assignPartner($campaign, 'Newsletter', 'mailing', $idle);
+        }
+
+        return $mix;
+    }
+
+    /** @param  list<array{id: int, uses: int}>  $codes */
+    private function assignPartner(Campaign $campaign, string $name, string $kind, array $codes): int
+    {
+        $partner = Partner::create(['campaign_id' => $campaign->id, 'name' => $name, 'kind' => $kind]);
+
+        Code::whereIn('id', array_column($codes, 'id'))->update(['partner_id' => $partner->id]);
+
+        return count($codes);
     }
 
     /**

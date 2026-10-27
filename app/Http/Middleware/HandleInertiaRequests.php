@@ -56,7 +56,7 @@ class HandleInertiaRequests extends Middleware
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
-            'beta_banner' => config('cardano.beta_banner', true),
+            'beta_banner' => config('cardano.beta_banner', false),
             'transaction_backend' => config('cardano.transaction_backend') ?? 'null',
             ...$this->deploymentNoticeProp($request),
         ];
@@ -85,10 +85,9 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * A page a claim recipient can land on: the /ada/now onboarding page (and its
-     * subdomain mirror) and the claim endpoints. The claim endpoints are registered on
-     * the 'api' middleware group and never reach this middleware at all; the check is
-     * kept here anyway as the one place this rule is stated, so it still holds if a
-     * claim-facing route is ever added to the 'web' group.
+     * subdomain mirror) and the claim endpoints. The claim page is on the 'web'
+     * group, so it reaches this middleware and is recognised here by its route name; the
+     * claim POST endpoints stay on the 'api' group.
      */
     private function isAttendeeFacing(Request $request): bool
     {

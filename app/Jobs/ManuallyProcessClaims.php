@@ -29,7 +29,7 @@ class ManuallyProcessClaims implements ShouldQueue
     {
         //
         ProcessClaims::dispatch($this->campaign_id)
-            ->delay((int) config('cardano.push_delay', 5) * 60);
+            ->delay((int) config('cardano.push_delay_seconds', 30));
     }
 
     public function middleware(): array

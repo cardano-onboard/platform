@@ -120,13 +120,11 @@ php artisan dusk --env=dusk.local
 
 ### CI Pipeline
 
-Pull requests trigger the CI workflow which runs:
-1. **Lint** — `vendor/bin/pint --test`
-2. **PHP Tests** — PHPUnit with PCOV coverage (minimum 50%)
-3. **Frontend Tests** — Vitest
-4. **Docker Build** — Validates the Dockerfile builds successfully
+Pull requests trigger the CI workflow, and it can also be started by hand from the Actions tab. It runs:
+1. **Tests** — one job that runs `vendor/bin/pint --test`, the Vitest frontend tests and the PHPUnit suite against MySQL, then builds the real assets, checks the Vite asset base and runs the Dusk end-to-end and content security policy checks. The PHP suite runs with PCOV coverage (minimum 50%) for pull requests and manual runs
+2. **Docker Build** — Validates the Dockerfile builds successfully; runs after the tests pass, only for pull requests into `main` and manual runs, and for a pull request only when the `Dockerfile`, `docker/`, `.dockerignore`, `composer.json`, `composer.lock`, `package.json` or `package-lock.json` changed
 
-All checks must pass before a PR can be merged.
+Draft pull requests are skipped, so run the suites locally while a branch is in draft. Marking the pull request ready for review starts CI, and a newer push to the same pull request cancels the run still in progress. If Pint, the frontend tests or the PHP tests fail, the build and the browser tests are skipped for that run, so a green PHP suite is what lets the browser checks start. All checks must pass before a PR can be merged.
 
 ## Architecture Overview
 
@@ -143,9 +141,10 @@ All checks must pass before a PR can be merged.
 
 The platform uses a pluggable transaction backend architecture:
 
-- **`null`** — Test mode (fake wallets, instant transactions)
+- **`native`** — The self-hosted default: each campaign holds its own key and the app builds, signs and submits its own transactions
 - **`phyrhose`** — Direct connection to Phyrhose transaction service
 - **`proxy`** — Routes through the SaaS platform relay
+- **`null`** — Test mode (fake wallets, instant transactions)
 
 Set via `TRANSACTION_BACKEND` in your `.env` file. The backend is injected via `TransactionBackend` interface in `app/Contracts/TransactionBackend.php`.
 

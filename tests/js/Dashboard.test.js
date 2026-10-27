@@ -97,6 +97,21 @@ describe('Dashboard', () => {
         expect(body).toContain('NMKR API Key');
     });
 
+    it('offers the desktop claims switch, off, and sends it with the campaign', async () => {
+        const wrapper = mountDashboard();
+        const createBtn = wrapper.findAll('button').find(btn => btn.text().includes('Create Campaign'));
+        await createBtn.trigger('click');
+        await wrapper.vm.$nextTick();
+
+        expect(document.body.textContent).toContain('Allow claims from a desktop browser');
+        expect(wrapper.vm.campaign.desktop_claims_enabled).toBe(0);
+
+        wrapper.vm.campaign.desktop_claims_enabled = 1;
+        wrapper.vm.createCampaign();
+        expect(wrapper.vm.campaign.post).toHaveBeenCalled();
+        expect(wrapper.vm.campaign.desktop_claims_enabled).toBe(1);
+    });
+
     it('shows remove confirmation dialog with campaign name', async () => {
         const campaigns = [makeCampaign({ name: 'Doomed Campaign', claims_count: 0 })];
         const wrapper = mountDashboard(campaigns);

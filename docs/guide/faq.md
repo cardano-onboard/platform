@@ -72,14 +72,15 @@ before the cards go out, not after.
 ### A claim says pending. Is it stuck?
 
 Probably not. Claims are dispatched asynchronously and confirmed on chain, which usually
-takes under a minute but can be longer when the network is busy. The scheduler re-checks
-status periodically; **Check claims** on the campaign page forces an immediate re-check.
+takes under a minute but can be longer when the network is busy. The platform checks shortly
+after sending and again whenever a status request asks; **Check claims** on the campaign page
+forces an immediate re-check.
 See [Troubleshooting](./troubleshooting#a-claim-is-stuck-as-pending).
 
 ### Someone claimed but says nothing arrived.
 
 Ask which wallet they used. Rewards go to the address they submitted, so if they claimed on
-a friend's phone or pasted the wrong address, the tokens are in that wallet. The claimed
+a friend's phone or connected the wrong wallet, the tokens are in that wallet. The claimed
 address is on the campaign page and in the claims export.
 
 ### Can the same person claim twice?
@@ -128,8 +129,11 @@ as established wallets that never transacted, and drag every percentage down. Se
 
 ### Do I need the hosted transaction backend?
 
-No. The self-hosted edition can run against its own backend. See
-[Editions](./editions) for what differs between the two.
+No. The self-hosted edition submits its own transactions by default: each campaign holds its own
+key and the instance builds, signs and submits every payment itself. You supply a wrapping key,
+two recovery key hashes from wallets you hold, and a stake address once. See
+[Configuration](./configuration#native-campaign-wallets). Phyrhose and the hosted proxy are
+still available as alternatives. See [Editions](./editions) for what differs between the two.
 
 ### Which network should I start on?
 

@@ -25,9 +25,62 @@ if (! function_exists('cardano_env_with_earlier_name')) {
 }
 
 return [
-    // Push delay in minutes — capped at 15 minutes due to SQS DelaySeconds limit (900s).
-    // If set higher, jobs would be rejected by SQS with InvalidParameterValueException.
-    'push_delay' => min(15, max(0, (int) env('POO_PUSH_DELAY', 5))),
+    // How long a claim waits before it is sent to the transaction backend, in seconds.
+    // Claims taken during the wait go out together, so this is a batching window, and it
+    // is also the first thing an attendee waits through before their reward can confirm.
+    // Most transactions land within a minute of being sent, so a window of minutes is most
+    // of the wait.
+    //
+    // POO_PUSH_DELAY_SECONDS is read first; a blank value counts as unset. POO_PUSH_DELAY is
+    // the earlier setting, in whole minutes, and whenever it is present and the seconds one is
+    // not, it is read exactly as it always was: blank or 0 means no wait. The 30-second
+    // default applies only when neither is present. Capped at 900 seconds because a queue
+    // delay longer than that is refused by SQS.
+    'push_delay_seconds' => min(900, max(0, (function () {
+        $seconds = env('POO_PUSH_DELAY_SECONDS');
+
+        if ($seconds !== null && $seconds !== '') {
+            return (int) $seconds;
+        }
+
+        $minutes = env('POO_PUSH_DELAY');
+
+        if ($minutes !== null) {
+            return (int) $minutes * 60;
+        }
+
+        return 30;
+    })())),
+
+    // How long a claim whose transaction timed out waits before it is sent again, in
+    // seconds, for its first timeout. Each timeout after that doubles it: 1, 2, 4 and 8
+    // minutes at the default. The claim is marked failed at its fifth timeout.
+    'claim_retry_backoff_base_seconds' => max(1, (int) env('CLAIM_RETRY_BACKOFF_BASE_SECONDS', 60)),
+
+    // Asking the transaction backend whether claims have reached the chain. The backend
+    // does not call back, so a claim's transaction hash is only recorded when something
+    // asks. Three things ask: a status request about a claim still waiting (a client polling
+    // a code's status while an attendee watches), a chain of checks that follows claims being
+    // sent, and the scheduler for installs that run one.
+    'claim_check' => [
+        // However many status requests arrive, at most one check per campaign is queued
+        // in this many seconds. It is also the longest a queued check can hold off the
+        // next one if its worker dies, so it bounds how stale a waiting attendee's answer
+        // can get.
+        'debounce_seconds' => max(1, (int) env('CLAIM_CHECK_DEBOUNCE_SECONDS', 15)),
+
+        // How long after claims are sent the first check runs. Long enough for a typical
+        // transaction to land, so the first check usually finds it. Each later check in the
+        // chain waits twice as long as the one before, up to five minutes, while claims are
+        // still awaiting confirmation, for half an hour after the last send.
+        'after_submit_seconds' => min(900, max(0, (int) env('CLAIM_CHECK_AFTER_SUBMIT_SECONDS', 40))),
+
+        // The most claims one background pass asks about, oldest first. The backend is
+        // asked one claim at a time, so this bounds how long a pass holds a worker and
+        // the campaign. The Check claims button and the onboarding analysis ask about
+        // every claim regardless.
+        'max_per_pass' => max(1, (int) env('CLAIM_CHECK_MAX_PER_PASS', 100)),
+    ],
 
     // Networks this deployment will accept for a campaign. Defaults to all three so
     // self-hosted installs and production keep every option; a staging environment
@@ -55,8 +108,7 @@ return [
     // not knowable at the moment a claim is taken.
     'network_fee_lovelace' => (int) env('NETWORK_FEE_LOVELACE', 200_000),
 
-    // The minimum ADA every Cardano output has to carry, and how much above it a reward
-    // should be set. See App\Support\MinUtxo for the arithmetic.
+    // The minimum ADA every Cardano output has to carry. See App\Support\MinUtxo for the arithmetic.
     //
     // A fact about the chain rather than a price, like the network fee above, so a
     // self-hosted install reads the same numbers a hosted one does.
@@ -66,17 +118,12 @@ return [
         // used when that read fails, and is the mainnet value at the time of writing.
         'coins_per_utxo_byte' => (int) env('COINS_PER_UTXO_BYTE', 4310),
 
-        // The length assumed for the recipient's address when sizing the output. 57 bytes
-        // is a base address: a header, a payment part and a staking part. Every wallet a
-        // claimant is likely to arrive with gives one of these, and an enterprise address
-        // is shorter, so assuming it never understates the minimum.
+        // The length assumed for the recipient's address when sizing the output before the
+        // recipient is known, as for a code priced at creation. 57 bytes is a base
+        // address: a header, a payment part and a staking part. An enterprise address is
+        // 29, so this stand-in overstates for one. It is used only where no address exists
+        // yet; an output built for a known address is sized from that address.
         'address_bytes' => (int) env('MIN_UTXO_ADDRESS_BYTES', 57),
-
-        // How far above the minimum a per-code reward should sit before it stops being
-        // warned about. An output resting exactly on its floor cannot be spent without
-        // ADA from somewhere else, and for a claimant whose wallet is minutes old there
-        // is no somewhere else. One ADA covers a fee with room to spare.
-        'headroom_lovelace' => (int) env('MIN_UTXO_HEADROOM_LOVELACE', 1_000_000),
     ],
 
     // Upload limits
@@ -134,7 +181,7 @@ return [
         'preprod_api_key' => env('NMKR_PREPROD_API_KEY', ''),
         'mainnet_api_key' => env('NMKR_MAINNET_API_KEY', ''),
     ],
-    'beta_banner' => (bool) env('BETA_BANNER', true),
+    'beta_banner' => (bool) env('BETA_BANNER', false),
 
     'proxy' => [
         'monthly_limit' => (int) env('PROXY_MONTHLY_LIMIT', 1000),
@@ -201,8 +248,9 @@ return [
     'proxy_api_url' => env('PROXY_API_URL', 'https://beta.onbd.io/api/v1/proxy'),
     'proxy_api_token' => env('PROXY_API_TOKEN', ''),
 
-    // Koios — public Cardano query layer used for native-asset metadata lookups.
-    // Optional bearer token raises rate limits but is not required.
+    // Koios — public Cardano query layer. It serves native-asset metadata lookups and, for the
+    // native transaction backend, chain reads (tip, protocol parameters, unspent outputs) and
+    // transaction submission. Optional bearer token raises rate limits but is not required.
     'koios' => [
         'mainnet_url' => env('KOIOS_MAINNET_URL', 'https://api.koios.rest/api/v1/'),
         'preprod_url' => env('KOIOS_PREPROD_URL', 'https://preprod.koios.rest/api/v1/'),
@@ -252,5 +300,17 @@ return [
         'preprod_id' => env('PHYRHOSE_PREPROD_ID', ''),
         'mainnet_jwt' => env('PHYRHOSE_MAINNET_JWT', ''),
         'mainnet_id' => env('PHYRHOSE_MAINNET_ID', ''),
+
+        // How long one request to the backend may take in all, and how long it may take to
+        // connect, in seconds. A backend that stops answering then fails the request instead
+        // of holding a worker, and a status check that meets one stops and leaves its claims
+        // for the next check.
+        'timeout_seconds' => (int) env('PHYRHOSE_TIMEOUT_SECONDS', 10),
+        'connect_timeout_seconds' => (int) env('PHYRHOSE_CONNECT_TIMEOUT_SECONDS', 5),
+
+        // How long sending a batch of claims may take, in seconds. Longer than the timeout
+        // above, because a send the backend accepted but answered too late for would leave
+        // the claims looking unsent, and the next run would send them again.
+        'submit_timeout_seconds' => (int) env('PHYRHOSE_SUBMIT_TIMEOUT_SECONDS', 60),
     ],
 ];

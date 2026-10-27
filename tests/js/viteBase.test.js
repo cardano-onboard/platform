@@ -11,14 +11,17 @@ import { resolve } from 'node:path';
 // was really loaded from. When the base is absolute, Vite emits string-concatenated chunk
 // URLs and drops import.meta.url, so its presence in the entry is the discriminator.
 //
-// Asserts the actual build output. CI builds assets before running the JS suite; when
-// no build is present (bare local `npm test`) the check is skipped rather than failing.
+// Asserts the actual build output. The Tests job builds nothing, so this file is run in
+// the Dusk job straight after its build. When no build is present, a bare local `npm test`
+// skips the check, but under CI (CI is set) a missing build fails it, so the guard cannot
+// quietly stop running.
 describe('vite build asset base', () => {
     const manifestPath = resolve(__dirname, '../../public/build/manifest.json');
 
-    const run = existsSync(manifestPath) ? it : it.skip;
+    const run = existsSync(manifestPath) || import.meta.env.CI ? it : it.skip;
 
     run('resolves dynamic-import chunks relatively (import.meta.url), not from an absolute base', () => {
+        expect(existsSync(manifestPath), 'no build found at public/build/manifest.json').toBe(true);
         const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
         const entry = manifest['resources/js/app.js'];
         expect(entry, 'app.js entry missing from manifest').toBeTruthy();
