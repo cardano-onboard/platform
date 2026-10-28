@@ -5,11 +5,18 @@ namespace Tests\Feature;
 use App\Models\KnownAsset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class SyncKnownAssetsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Sleep::fake();
+    }
 
     private function registryPage(): array
     {
@@ -89,5 +96,30 @@ class SyncKnownAssetsTest extends TestCase
         $this->assertTrue($row->metadata['logo_checked']);
         $this->assertSame('iVBOR', $row->logo);
         $this->assertSame(6, (int) $row->decimals);
+    }
+
+    public function test_a_sync_koios_stopped_part_way_through_exits_as_a_failure(): void
+    {
+        // A first page, then Koios failing on every retry of the second. The rows already
+        // fetched are kept, but the run is not done, and whatever runs it on a timer must
+        // see a failure so that it tries again.
+        Http::fakeSequence()
+            ->push($this->registryPage())
+            ->whenEmpty(Http::response('unavailable', 503));
+
+        $this->artisan('assets:sync-registry', ['--network' => 'mainnet', '--limit' => 2])
+            ->assertFailed();
+
+        $this->assertDatabaseCount('known_assets', 2);
+
+        // The pause after the first page, then the four attempts at the second backing off
+        // one second longer each time.
+        Sleep::assertSequence([
+            Sleep::usleep(400_000),
+            Sleep::for(1)->seconds(),
+            Sleep::for(2)->seconds(),
+            Sleep::for(3)->seconds(),
+            Sleep::for(4)->seconds(),
+        ]);
     }
 }

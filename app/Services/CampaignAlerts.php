@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Cardano\ChainRetention;
 use App\Models\Campaign;
+use App\Support\PlatformFee;
 use App\Support\Pricing;
 
 /**
@@ -27,12 +29,14 @@ class CampaignAlerts
      * }
      */
     /**
-     * @param  array  $bucket  The wallet's live UTxOs, as the campaign page already
-     *                         fetched them. Passed in rather than fetched again, because
-     *                         reading a balance is a call over the network and asking for
-     *                         it twice on one page load is a cost with no answer attached.
+     * @param  ?array  $bucket  The wallet's live UTxOs, as the campaign page already
+     *                          fetched them. Passed in rather than fetched again, because
+     *                          reading a balance is a call over the network and asking for
+     *                          it twice on one page load is a cost with no answer attached.
+     *                          Null when the balance could not be read, which leaves the
+     *                          claims remaining unknown instead of counting them as none.
      */
-    public function for(Campaign $campaign, array $bucket = []): array
+    public function for(Campaign $campaign, ?array $bucket = []): array
     {
         $threshold = (int) ($campaign->alert_threshold_claims ?? self::DEFAULT_THRESHOLD);
         $enabled = (bool) ($campaign->alerts_enabled ?? true);
@@ -94,7 +98,7 @@ class CampaignAlerts
      * with no account to check a balance against, or a bucket path with no still-
      * claimable code to price a claim from.
      */
-    private function claimsRemaining(Campaign $campaign, array $bucket): ?int
+    private function claimsRemaining(Campaign $campaign, ?array $bucket): ?int
     {
         $path = Pricing::pathFor($campaign);
 
@@ -105,6 +109,10 @@ class CampaignAlerts
                     max(0, $this->ledger->balanceMicro($campaign->user)),
                     max(1, Pricing::claimCostMicro(1))
                 );
+        }
+
+        if ($bucket === null) {
+            return null;
         }
 
         // The bucket pays for everything on this path: the reward, the chain and the fee.
@@ -128,8 +136,15 @@ class CampaignAlerts
      */
     private function dearestClaimCost(Campaign $campaign): int
     {
-        $fees = (int) config('cardano.network_fee_lovelace')
-            + (int) (Pricing::inBandCharge(Pricing::pathFor($campaign))['revenue_lovelace'] ?? 0);
+        // On a native campaign the tier the next claim falls in, since that is what it will pay,
+        // and nothing where the campaign collects no fee. The flat in-band rate everywhere else.
+        $platformFee = match (true) {
+            $campaign->wallet?->backend !== 'native' => (int) (Pricing::inBandCharge(Pricing::pathFor($campaign))['revenue_lovelace'] ?? 0),
+            PlatformFee::collects($campaign) => (int) Pricing::marginalRate(Pricing::pathFor($campaign), (new ChainRetention)->feesState($campaign)['paid'] + 1),
+            default => 0,
+        };
+
+        $fees = (int) config('cardano.network_fee_lovelace') + $platformFee;
 
         // Read from the codes the page already loaded, which carry their claim counts.
         // There is no claims_count column to query against; it is a counted relation.

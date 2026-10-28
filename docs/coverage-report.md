@@ -1,8 +1,7 @@
 # Code Coverage & Testing Report
 
-**Date:** 2026-06-29 (coverage re-measured on staging)
-**Version:** v1.1.0-beta (staging)
-
+**Date:** 2026-06-29
+**Version:** v1.1.0-beta
 
 ## Test Suite Summary
 
@@ -17,7 +16,7 @@
 **Changes since 2026-04-07 report:**
 
 - +7 tests in `ClaimMultiUseTest` (multi-claim regression suite ported from
-  staging hotfix)
+  a hotfix)
 - +4 tests in `SecurityTest` (cross-user authorization gaps: code create,
   refund, check-claims, API token revoke)
 
@@ -98,7 +97,6 @@ boilerplate):
 - `app/Http/Controllers/Auth/*`: Breeze auth controllers
 - `app/Providers/BroadcastServiceProvider.php`: unused default provider
 
-
 ## Frontend Coverage (Vitest)
 
 **40 tests across 4 files**
@@ -111,7 +109,6 @@ boilerplate):
 
 **Test environment:** jsdom with real Vuetify rendering. Only MeshJS (WASM) and
 Inertia navigation are mocked.
-
 
 ## E2E Browser Coverage (Laravel Dusk)
 
@@ -126,8 +123,7 @@ Chrome.
 | ProfileTest.php      | 4     | Profile page, user email, delete section, API tokens section                   |
 | RegistrationTest.php | 1     | Registration page loads                                                        |
 
-**Runs in CI:** Yes, parallel job gating both staging and production deploys.
-
+**Runs in CI:** Yes, as a parallel job.
 
 ## API Endpoint Coverage Matrix
 
@@ -137,13 +133,7 @@ Chrome.
 | `GET /login`                        | GET    | No      | Auth               | Auth      | Dashboard |
 | `POST /login`                       | POST   | No      | Auth               | Auth      | Dashboard |
 | `POST /logout`                      | POST   | Yes     | Auth               | Auth      | -         |
-| `GET /register`                     | GET    | No      | Auth               | Reg       | -         |
-| `POST /register`                    | POST   | No      | Auth               | -         | -         |
 | `GET /dashboard`                    | GET    | Yes     | Feature            | Campaign  | Dashboard |
-| `GET /profile`                      | GET    | Yes     | Profile            | Profile   | -         |
-| `PATCH /profile`                    | PATCH  | Yes     | Profile            | -         | -         |
-| `DELETE /profile`                   | DELETE | Yes     | Profile            | -         | -         |
-| `POST /profile/tokens`              | POST   | Yes     | Profile            | -         | -         |
 | `GET /campaigns`                    | GET    | Yes     | Campaign           | -         | -         |
 | `POST /campaigns`                   | POST   | Yes     | Campaign           | Campaign  | -         |
 | `GET /campaigns/{id}`               | GET    | Yes     | Campaign           | Campaign  | Dashboard |
@@ -162,7 +152,6 @@ Chrome.
 
 **Coverage:** 26/26 endpoints have at least one test. The claim API endpoint has
 the highest coverage (PHPUnit + Security + Dusk + k6).
-
 
 ## Improvement Targets (M3)
 

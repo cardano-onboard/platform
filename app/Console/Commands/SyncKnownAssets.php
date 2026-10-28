@@ -6,6 +6,7 @@ use App\Models\KnownAsset;
 use App\Services\KoiosService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
  * Sync the local known-assets registry from the Koios token registry.
@@ -29,6 +30,13 @@ class SyncKnownAssets extends Command
 
     protected $description = 'Fetch the latest known tokens from the Koios token registry into the known_assets table';
 
+    /**
+     * Networks whose sync stopped on a Koios failure during this run.
+     *
+     * @var list<string>
+     */
+    private array $incomplete = [];
+
     public function handle(KoiosService $koios): int
     {
         $requested = $this->option('network');
@@ -39,6 +47,14 @@ class SyncKnownAssets extends Command
         $total = 0;
         foreach ($networks as $network) {
             $total += $this->syncNetwork($koios, $network, $limit, $maxPages);
+        }
+
+        if ($this->incomplete !== []) {
+            // Exits as a failure so that whatever runs this on a timer retries it, rather
+            // than recording a sync that stopped part-way as done.
+            $this->error("Synced {$total} known token(s), but the sync is incomplete for: ".implode(', ', $this->incomplete).'.');
+
+            return self::FAILURE;
         }
 
         $this->info("✔ Synced {$total} known token(s) across: ".implode(', ', $networks).'.');
@@ -66,6 +82,7 @@ class SyncKnownAssets extends Command
                 // than silently reporting a "successful" partial sync.
                 $this->error("  Koios failed at offset {$offset}; {$network} sync is INCOMPLETE (got {$upserted} so far).");
                 Log::error('assets:sync-registry incomplete', ['network' => $network, 'stopped_at_offset' => $offset, 'upserted' => $upserted]);
+                $this->incomplete[] = $network;
                 break;
             }
             if (empty($rows)) {
@@ -109,7 +126,7 @@ class SyncKnownAssets extends Command
 
             $this->line("  offset {$offset}: ".count($rows).' rows');
             $offset += $limit;
-            usleep(400_000); // be polite to the public endpoint between pages
+            Sleep::usleep(400_000); // be polite to the public endpoint between pages
         } while (count($rows) === $limit);
 
         Log::info('assets:sync-registry completed', ['network' => $network, 'upserted' => $upserted]);

@@ -142,9 +142,7 @@ const props = defineProps({
         type: Object,
         default: () => ({
             coins_per_utxo_byte: 4310,
-            headroom_lovelace: 1000000,
             below_minimum_codes: 0,
-            tight_codes: 0,
         }),
     },
     // Background work running on this campaign when the page was drawn, and the server
@@ -262,6 +260,7 @@ const editForm = useForm({
     nmkr_api_key: props.campaign.nmkr_api_key,
     network: props.campaign.network,
     one_per_wallet: props.campaign.one_per_wallet,
+    desktop_claims_enabled: props.campaign.desktop_claims_enabled ? 1 : 0,
     alerts_enabled: props.campaign.alerts_enabled ? 1 : 0,
     alert_threshold_claims: props.campaign.alert_threshold_claims ?? null,
     max_codes: props.campaign.max_codes ?? null,
@@ -276,6 +275,7 @@ function openEditDialog() {
     editForm.nmkr_api_key = props.campaign.nmkr_api_key;
     editForm.network = props.campaign.network;
     editForm.one_per_wallet = props.campaign.one_per_wallet;
+    editForm.desktop_claims_enabled = props.campaign.desktop_claims_enabled ? 1 : 0;
     editForm.alerts_enabled = props.campaign.alerts_enabled ? 1 : 0;
     editForm.alert_threshold_claims =
         props.campaign.alert_threshold_claims ?? null;
@@ -515,7 +515,6 @@ function newQuote() {
     return reactive({
         loading: false,
         min_lovelace: 0,
-        recommended_lovelace: 0,
         asset_count: 0,
         policy_count: 0,
     });
@@ -528,18 +527,17 @@ const activeQuote = computed(() =>
     tokenTarget.value === "edit" ? editQuote : codeQuote,
 );
 
-// Rounded up to the next whole ADA, because that is how an operator thinks about the
-// number they are about to type into a box.
-function suggested(quote) {
-    return quote.recommended_lovelace
-        ? Math.ceil(quote.recommended_lovelace / 1000000) * 1000000
-        : 0;
+// The reward is stored at the higher of what is typed and the minimum for the assets, so
+// the field is moved up to the minimum whenever it sits below it, and left alone when it
+// is above. Applied when the answer for a changed token list arrives, and when the field
+// loses focus, so a figure still being typed is never overwritten halfway through.
+function raiseToMinimum(quote, form) {
+    if (quote.min_lovelace > 0 && Number(form.lovelace) < quote.min_lovelace) {
+        form.lovelace = quote.min_lovelace;
+    }
 }
 
-const suggestedLovelace = computed(() => suggested(codeQuote));
-const suggestedEditLovelace = computed(() => suggested(editQuote));
-
-function quoteMinUtxo(quote, tokens) {
+function quoteMinUtxo(quote, tokens, form) {
     // Guarded: the campaign page is rendered in environments with no axios bound.
     if (!window.axios) {
         return;
@@ -550,9 +548,9 @@ function quoteMinUtxo(quote, tokens) {
         .post(route("campaigns.min-utxo", props.campaign.id), { tokens })
         .then(({ data }) => {
             quote.min_lovelace = data.min_lovelace;
-            quote.recommended_lovelace = data.recommended_lovelace;
             quote.asset_count = data.asset_count;
             quote.policy_count = data.policy_count;
+            raiseToMinimum(quote, form);
         })
         .catch(() => {
             // Left at whatever was last known. A failed lookup must not silently
@@ -564,11 +562,11 @@ function quoteMinUtxo(quote, tokens) {
 }
 
 function refreshCodeQuote() {
-    quoteMinUtxo(codeQuote, code.tokens);
+    quoteMinUtxo(codeQuote, code.tokens, code);
 }
 
 function refreshEditQuote() {
-    quoteMinUtxo(editQuote, editCode.tokens);
+    quoteMinUtxo(editQuote, editCode.tokens, editCode);
 }
 
 function refreshActiveQuote() {
@@ -579,40 +577,24 @@ function refreshActiveQuote() {
     }
 }
 
-// Whether what is typed clears the chain's floor, and whether it leaves the claimant
-// anything to spend. Two different answers: the first blocks the save, the second is
-// said out loud and then allowed.
+// Whether what is typed is under the minimum for the assets. It is saved at the minimum
+// either way, so this only says so while the field is being edited.
 function belowMinimum(quote, lovelace) {
     return quote.min_lovelace > 0 && Number(lovelace) < quote.min_lovelace;
 }
 
-function isTight(quote, lovelace) {
-    return (
-        quote.min_lovelace > 0 &&
-        !belowMinimum(quote, lovelace) &&
-        Number(lovelace) < quote.recommended_lovelace
-    );
-}
-
 const codeBelowMinimum = computed(() => belowMinimum(codeQuote, code.lovelace));
-const codeIsTight = computed(() => isTight(codeQuote, code.lovelace));
 const editBelowMinimum = computed(() =>
     belowMinimum(editQuote, editCode.lovelace),
 );
-const editIsTight = computed(() => isTight(editQuote, editCode.lovelace));
 
-// One rule for both dialogs, against whichever quote belongs to the form being filled in.
-function lovelaceRule(value, quote) {
+// One rule for both dialogs. The minimum for the assets is not a rule: it raises the value.
+function lovelaceRule(value) {
     if (value < 1000000) {
         return "Lovelace must be at least 1000000 (1 ADA)";
     }
     if (value > 45000000000000000) {
         return "Lovelace cannot be greater than total maximum supply!";
-    }
-    // The chain's own floor for what this bundle carries. Below it the payment cannot be
-    // submitted at all, so it is an error rather than a warning.
-    if (quote.min_lovelace > 0 && Number(value) < quote.min_lovelace) {
-        return `An output carrying these tokens needs at least ${quote.min_lovelace} lovelace (${adaText(quote.min_lovelace)} ADA)`;
     }
     return true;
 }
@@ -627,8 +609,8 @@ const rules = {
             return "Code can only contain letters, numbers, dashes and underscores!";
         },
     ],
-    lovelace: [(v) => lovelaceRule(v, codeQuote)],
-    editLovelace: [(v) => lovelaceRule(v, editQuote)],
+    lovelace: [(v) => lovelaceRule(v)],
+    editLovelace: [(v) => lovelaceRule(v)],
     quantity: [
         (v) => {
             const n = Number(v);
@@ -1091,7 +1073,7 @@ const wallet_balance = computed(() => {
         token_count: 0,
     };
 
-    props.balance.forEach((utxo) => {
+    (props.balance ?? []).forEach((utxo) => {
         balance.lovelace += BigInt(utxo.lovelace);
         utxo.nativeAssets.forEach((asset) => {
             if (balance.tokens[asset.policy] === undefined) {
@@ -1201,6 +1183,8 @@ const campaign_needs = computed(() => {
 });
 
 const wallet_missing = computed(() => {
+    // Nothing is known to be missing from a balance that could not be read.
+    if (props.balance === null) return null;
     console.log(
         "Calculating what's missing from the wallet!",
         campaign_needs,
@@ -1240,6 +1224,7 @@ const wallet_missing = computed(() => {
 });
 
 const wallet_empty = computed(() => {
+    if (props.balance === null) return false;
     if (wallet_balance.value.lovelace === undefined) {
         return true;
     }
@@ -1273,6 +1258,13 @@ const topUpTooltip = computed(() => {
 // directive card is reserved for the one state that needs action (still-open + underfunded);
 // every other state collapses to this badge, with the balance available on click.
 const bucketBadge = computed(() => {
+    // A balance the backend could not read is not an empty one.
+    if (props.balance === null)
+        return {
+            label: "Balance unavailable",
+            color: "grey",
+            icon: "mdi-help-circle-outline",
+        };
     if (wallet_missing.value)
         return {
             label: "Underfunded",
@@ -1983,6 +1975,18 @@ async function buildTopUpTransaction() {
                                     >
                                 </v-btn>
                             </div>
+                            <div class="text-medium-emphasis text-caption">
+                                <template v-if="campaign.desktop_claims_enabled">
+                                    Opened in a desktop browser, this address is
+                                    a claim page where a recipient enters their
+                                    code and connects a wallet extension.
+                                </template>
+                                <template v-else>
+                                    Opened in a browser, this address shows a page
+                                    telling the recipient to open the link in a
+                                    wallet app.
+                                </template>
+                            </div>
                         </div>
                         <div v-if="campaign.wallet" class="mt-2">
                             <div
@@ -2132,22 +2136,6 @@ async function buildTopUpTransaction() {
                         tokens has to hold, so the chain will reject the payment
                         however much is in the bucket. Open the code in the
                         table below and raise its reward.
-                    </v-alert>
-                    <v-alert
-                        v-else-if="min_utxo.tight_codes > 0"
-                        type="warning"
-                        variant="tonal"
-                        class="mb-4"
-                        border="start"
-                        density="compact"
-                        data-test="codes-tight"
-                    >
-                        {{ min_utxo.tight_codes }} code{{
-                            min_utxo.tight_codes === 1 ? "" : "s"
-                        }}
-                        pay just enough to be accepted and nothing to spend.
-                        Claimants with no other ADA will not be able to move
-                        what they receive.
                     </v-alert>
                     <!-- The one loud, directive state: still-open campaign that needs funding.
                          Funded / empty / ended states collapse to the badge by the address. -->
@@ -2761,6 +2749,7 @@ async function buildTopUpTransaction() {
                         <v-text-field
                             label="Lovelace"
                             v-model="code.lovelace"
+                            @blur="raiseToMinimum(codeQuote, code)"
                             required
                             min="1000000"
                             step="1"
@@ -2789,39 +2778,20 @@ async function buildTopUpTransaction() {
                                     : `${codeQuote.policy_count} policies`
                             }}:
                             <strong
-                                >{{
-                                    adaText(codeQuote.min_lovelace)
-                                }}
-                                ADA</strong
-                            >. Suggested
-                            <strong
-                                >{{ adaText(suggestedLovelace) }} ADA</strong
-                            >
-                            so the claimant can pay a fee and move it.
+                                >{{ adaText(codeQuote.min_lovelace) }} ADA</strong
+                            >. A reward below it is raised to it when saved.
                         </div>
                         <v-alert
                             v-if="codeBelowMinimum"
-                            type="error"
+                            type="info"
                             density="compact"
                             variant="tonal"
                             class="mt-2"
                             data-test="min-utxo-below"
                         >
-                            This is below what the chain will accept for these
-                            tokens. A claim on it could never be sent.
-                        </v-alert>
-                        <v-alert
-                            v-else-if="codeIsTight"
-                            type="warning"
-                            density="compact"
-                            variant="tonal"
-                            class="mt-2"
-                            data-test="min-utxo-tight"
-                        >
-                            This clears the minimum with nothing to spare. A
-                            claimant whose wallet is minutes old has no other
-                            ADA to pay a fee with, so the tokens will sit where
-                            you sent them. You can create it anyway.
+                            This is below the minimum for these tokens, so it
+                            will be created at
+                            {{ adaText(codeQuote.min_lovelace) }} ADA.
                         </v-alert>
                         <v-text-field
                             label="NMKR Project UID"
@@ -2958,6 +2928,7 @@ async function buildTopUpTransaction() {
                         <v-text-field
                             label="Lovelace"
                             v-model="editCode.lovelace"
+                            @blur="raiseToMinimum(editQuote, editCode)"
                             required
                             min="1000000"
                             step="1"
@@ -2984,42 +2955,20 @@ async function buildTopUpTransaction() {
                                     : `${editQuote.policy_count} policies`
                             }}:
                             <strong
-                                >{{
-                                    adaText(editQuote.min_lovelace)
-                                }}
-                                ADA</strong
-                            >. Suggested
-                            <strong
-                                >{{
-                                    adaText(suggestedEditLovelace)
-                                }}
-                                ADA</strong
-                            >
-                            so the claimant can pay a fee and move it.
+                                >{{ adaText(editQuote.min_lovelace) }} ADA</strong
+                            >. A reward below it is raised to it when saved.
                         </div>
                         <v-alert
                             v-if="editBelowMinimum"
-                            type="error"
+                            type="info"
                             density="compact"
                             variant="tonal"
                             class="mt-2"
                             data-test="edit-min-utxo-below"
                         >
-                            This is below what the chain will accept for these
-                            tokens. A claim on it could never be sent.
-                        </v-alert>
-                        <v-alert
-                            v-else-if="editIsTight"
-                            type="warning"
-                            density="compact"
-                            variant="tonal"
-                            class="mt-2"
-                            data-test="edit-min-utxo-tight"
-                        >
-                            This clears the minimum with nothing to spare. A
-                            claimant whose wallet is minutes old has no other
-                            ADA to pay a fee with, so the tokens will sit where
-                            you sent them. You can save it anyway.
+                            This is below the minimum for these tokens, so it
+                            will be saved at
+                            {{ adaText(editQuote.min_lovelace) }} ADA.
                         </v-alert>
                         <v-text-field
                             label="NMKR Project UID"
@@ -3647,6 +3596,17 @@ async function buildTopUpTransaction() {
                                     : ''
                             "
                             persistent-hint
+                        />
+                        <v-switch
+                            label="Allow claims from a desktop browser"
+                            v-model="editForm.desktop_claims_enabled"
+                            :true-value="1"
+                            :false-value="0"
+                            color="primary"
+                            density="compact"
+                            hint="Off: the claim link opens only in a wallet app. On: recipients can also claim on a web page by connecting a wallet extension."
+                            persistent-hint
+                            :error-messages="editForm.errors.desktop_claims_enabled"
                         />
                         <!-- When this campaign should tell its operator it is running
                              short. A campaign setting, saved by the same endpoint that

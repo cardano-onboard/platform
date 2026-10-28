@@ -8,7 +8,7 @@
 #
 #   ./quickstart.sh                 # interactive — prompts for the admin login
 #   ./quickstart.sh --yes           # non-interactive — generates an admin password
-#   ./quickstart.sh --force         # overwrite an existing .env (backs it up first)
+#   ./quickstart.sh --force         # overwrite an existing .env (backs it up, keeps its wrapping keys)
 #   ./quickstart.sh --port 8082     # serve on a port other than 8080
 #
 set -euo pipefail
@@ -64,13 +64,18 @@ if [[ -f "$TARGET" && "$FORCE" != "true" ]]; then
     echo "A .env already exists — not overwriting it."
     echo
     echo "  If you want to start over:  ./quickstart.sh --force"
-    echo "  (your current .env would be backed up to .env.bak first)"
+    echo "  (your current .env would be backed up first, and its CAMPAIGN_WRAPPING_KEY_* kept)"
     exit 1
 fi
 
+# The wrapping keys encrypt every campaign's signing key. A new one cannot read what the old one
+# wrote, so an existing .env's keys are carried into the new one, never replaced.
+KEEP_KEYS=""
 if [[ -f "$TARGET" && "$FORCE" == "true" ]]; then
-    cp "$TARGET" "$TARGET.bak"
-    echo "==> Existing .env backed up to .env.bak"
+    BACKUP="$TARGET.bak.$(date +%Y%m%d%H%M%S).$$"
+    cp "$TARGET" "$BACKUP"
+    KEEP_KEYS="$(grep -E '^CAMPAIGN_WRAPPING_KEY_[A-Z0-9]+=.' "$TARGET" || true)"
+    echo "==> Existing .env backed up to $BACKUP"
 fi
 
 # ---------------------------------------------------------------------------
@@ -98,7 +103,7 @@ if command -v docker >/dev/null 2>&1 &&
     echo
     echo "    1. Keep your existing data — press Ctrl-C now, and copy the"
     echo "       DB_PASSWORD / DB_ROOT_PASSWORD values out of your old .env"
-    echo "       (or .env.bak) into the new one after this script finishes."
+    echo "       (or its backup) into the new one after this script finishes."
     echo
     echo "    2. Start over and DESTROY the existing database:"
     echo
@@ -159,6 +164,14 @@ echo "==> Generating APP_KEY and database passwords ..."
 set_env APP_KEY          "$(gen_app_key)"
 set_env DB_PASSWORD      "$(gen_secret)"
 set_env DB_ROOT_PASSWORD "$(gen_secret)"
+if [[ -n "$KEEP_KEYS" ]]; then
+    while IFS= read -r KEEP_LINE; do
+        set_env "${KEEP_LINE%%=*}" "${KEEP_LINE#*=}"
+    done <<< "$KEEP_KEYS"
+    echo "==> Kept the CAMPAIGN_WRAPPING_KEY_* values from the existing .env"
+else
+    set_env CAMPAIGN_WRAPPING_KEY_1 "$(openssl rand -base64 32)"
+fi
 
 # ---------------------------------------------------------------------------
 # Admin account
@@ -238,6 +251,12 @@ if [[ "$GENERATED_ADMIN_PASSWORD" == "true" ]]; then
 else
     echo "  Admin password:  (the one you entered)"
 fi
+echo
+echo "  Campaigns hold their own keys. CAMPAIGN_WRAPPING_KEY_1 was generated for you:"
+echo "  copy it somewhere safe, because keys encrypted under it cannot be read without it."
+echo "  Before creating a campaign, set in .env the two recovery key hashes"
+echo "  (CAMPAIGN_OWNER_KEY_HASH_1 and _2) and CAMPAIGN_STAKE_ADDRESS_PREPROD or _MAINNET."
+echo "  See docs/guide/configuration.md, \"Native campaign wallets\"."
 echo
 echo "  Start the stack with:"
 echo

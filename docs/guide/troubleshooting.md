@@ -36,17 +36,7 @@ composer require symfony/http-client
 ```
 
 The symptom is a mail driver that appears configured correctly but throws as soon as
-anything tries to send, including the verification mail on a new account.
-
-### New accounts can't reach anything after registering
-
-Email verification is required before the application is reachable. On a self-hosted
-install with no working mailer, nobody can get past that. Either configure a mailer, or
-verify an account directly:
-
-```bash
-php artisan tinker --execute="App\Models\User::where('email','you@example.com')->update(['email_verified_at'=>now()]);"
-```
+anything tries to send.
 
 ### Assets don't load and the console shows Content-Security-Policy errors
 
@@ -61,11 +51,15 @@ rather than turning the policy off.
 
 Pending means dispatched but not yet confirmed on chain. In order:
 
-1. Press **Check claims** to force an immediate status re-check.
+1. Press **Check claims** to force an immediate status re-check. On a deployment using the
+   `sync` queue connection, claims are only re-checked by status requests and the scheduler,
+   so make sure `php artisan schedule:run` runs every minute from cron.
 2. Check the campaign bucket has funds. A token reward needs ADA alongside it, so a bucket
    with tokens but no ADA cannot pay out.
-3. Look at the claim's retry count. Claims retry automatically; repeated failures point at
-   funding or at the transaction backend rather than at the claim.
+3. Look at the claim's retry count. Claims retry automatically, waiting longer after each
+   timeout; repeated failures point at funding or at the transaction backend rather than at
+   the claim. Once that is fixed, `php artisan claims:retry-failed {campaign}` sends the
+   campaign's failed claims again.
 
 ### Claims fail once the bucket runs low
 
@@ -76,7 +70,7 @@ claim. Top up and the queued claims go through.
 ### Someone claims and nothing arrives
 
 Rewards go to the address submitted at claim time, which is on the campaign page and in the
-claims export. If a claimant used a friend's phone or pasted an address from elsewhere, the
+claims export. If a claimant used a friend's phone or connected a different wallet, the
 tokens went to that wallet. There's nothing to recover from your side.
 
 ### A wallet's claim is refused as an invalid address

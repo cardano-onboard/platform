@@ -5,7 +5,9 @@ namespace App\Jobs;
 use App\Jobs\Concerns\TracksCampaignTask;
 use App\Models\Campaign;
 use App\Models\Partner;
+use App\Models\Reward;
 use App\Services\CodeCapacity;
+use App\Services\MinUtxoService;
 use App\Support\StorageDisk;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -144,6 +146,7 @@ class ProcessUploadedCodes implements ShouldQueue
         $total = count($import_content);
         $capacity = app(CodeCapacity::class);
         $partnerId = $this->resolvePartnerId();
+        $minUtxo = app(MinUtxoService::class);
 
         // The campaign's own cap on how many codes it may ever hold — not $maxCodes above,
         // which is how many rows one uploaded file may contain. Null for an uncapped
@@ -162,6 +165,7 @@ class ProcessUploadedCodes implements ShouldQueue
         $imported_codes = 0;
         $imported_tokens = 0;
         $skipped = 0;
+        $raised = 0;
         $read = 0;
 
         $this->stage('Creating codes');
@@ -189,42 +193,59 @@ class ProcessUploadedCodes implements ShouldQueue
                 continue;
             }
 
-            $create = function () use ($campaign, $codeString, $partnerId, $data) {
+            // The tokens are read before the code is written, because what the code pays
+            // depends on them: it is stored at the higher of the file's lovelace and the
+            // exact minimum for its tokens.
+            $rewards = [];
+
+            foreach ($data as $token => $quantity) {
+                if ($token === 'lovelaces') {
+                    continue;
+                }
+
+                $parts = explode('.', $token);
+                if (count($parts) !== 2) {
+                    Log::warning('Skipping token with invalid format.', ['token' => $token, 'campaign' => $this->campaign_id]);
+
+                    continue;
+                }
+
+                [$policy_hex, $asset_hex] = $parts;
+
+                if (! preg_match(Reward::POLICY_HEX, $policy_hex) || ! preg_match(Reward::ASSET_HEX, $asset_hex)) {
+                    Log::warning('Skipping token with a policy id or asset name that is not hex of the right length.', ['token' => $token, 'campaign' => $this->campaign_id]);
+
+                    continue;
+                }
+
+                $rewards[] = compact('policy_hex', 'asset_hex', 'quantity');
+            }
+
+            $entered = (int) $data['lovelaces'];
+            $lovelace = $minUtxo->effectiveLovelace(
+                array_map(static fn ($reward) => [
+                    'policy' => $reward['policy_hex'],
+                    'asset' => $reward['asset_hex'],
+                    'quantity' => (int) $reward['quantity'],
+                ], $rewards),
+                $campaign->network,
+                $entered,
+            );
+
+            $create = function () use ($campaign, $codeString, $partnerId, $lovelace, $rewards) {
                 $code = $campaign->codes()->create([
                     'code' => $codeString,
                     'partner_id' => $partnerId,
                     'perWallet' => 1,
                     'uses' => 1,
-                    'lovelace' => (int) $data['lovelaces'],
+                    'lovelace' => $lovelace,
                 ]);
 
-                $rowTokens = 0;
-
-                foreach ($data as $token => $quantity) {
-                    if ($token === 'lovelaces') {
-                        continue;
-                    }
-
-                    $parts = explode('.', $token);
-                    if (count($parts) !== 2) {
-                        Log::warning('Skipping token with invalid format.', ['token' => $token, 'campaign' => $this->campaign_id]);
-
-                        continue;
-                    }
-
-                    [$policy_hex, $asset_hex] = $parts;
-
-                    if (! ctype_xdigit($policy_hex) || ! ctype_xdigit($asset_hex)) {
-                        Log::warning('Skipping token with non-hex identifiers.', ['token' => $token, 'campaign' => $this->campaign_id]);
-
-                        continue;
-                    }
-
-                    $code->rewards()->create(compact('policy_hex', 'asset_hex', 'quantity'));
-                    $rowTokens++;
+                foreach ($rewards as $reward) {
+                    $code->rewards()->create($reward);
                 }
 
-                return [$code, $rowTokens];
+                return [$code, count($rewards)];
             };
 
             try {
@@ -281,6 +302,7 @@ class ProcessUploadedCodes implements ShouldQueue
             }
 
             $imported_codes++;
+            $raised += $lovelace > $entered ? 1 : 0;
             $imported_tokens += $rowTokens;
         }
 
@@ -290,6 +312,13 @@ class ProcessUploadedCodes implements ShouldQueue
             'tokens' => $imported_tokens,
             'partner' => $partnerId,
         ]);
+
+        if ($raised > 0) {
+            Log::info('Uploaded codes raised to the minimum for their assets.', [
+                'campaign' => $this->campaign_id,
+                'raised' => $raised,
+            ]);
+        }
 
         // The skipped count is reported rather than buried in the log, because an import
         // that silently drops half its rows looks exactly like one that worked.

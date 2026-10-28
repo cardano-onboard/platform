@@ -4,12 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
+use App\Providers\AppServiceProvider;
+use App\Services\NativeBackend;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PhyrhoseProxyController extends Controller
 {
-    public function __construct(private TransactionBackend $backend) {}
+    private TransactionBackend $backend;
+
+    /**
+     * The proxy relays a self-hosted instance's requests to the hosted custodian, and to nothing
+     * else. On a deployment whose own default is the native backend, the default is not what the
+     * proxy relays to: the native backend acts on this deployment's own campaigns by id, with keys
+     * this deployment holds, and a proxy token is not an owner of any of them.
+     */
+    public function __construct(TransactionBackend $backend)
+    {
+        $this->backend = $backend instanceof NativeBackend
+            ? AppServiceProvider::resolveBackend('phyrhose')
+            : $backend;
+    }
 
     public function createBucket(Request $request): JsonResponse
     {

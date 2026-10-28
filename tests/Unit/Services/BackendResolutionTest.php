@@ -53,10 +53,12 @@ class BackendResolutionTest extends TestCase
     public function test_the_refusal_names_the_backends_that_do_exist(): void
     {
         try {
-            AppServiceProvider::resolveBackend('native');
+            // A name nothing has ever answered to. This case used to use 'native', chosen because
+            // it did not exist yet; it does now, so it would have been testing the wrong thing.
+            AppServiceProvider::resolveBackend('custodian-of-the-month');
             $this->fail('An unknown backend name should not resolve.');
         } catch (InvalidArgumentException $e) {
-            foreach (['phyrhose', 'proxy', 'null'] as $known) {
+            foreach (['phyrhose', 'proxy', 'null', 'native'] as $known) {
                 $this->assertStringContainsString($known, $e->getMessage());
             }
         }

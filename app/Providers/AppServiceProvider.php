@@ -5,17 +5,23 @@ namespace App\Providers;
 use App\Cardano\ChainData;
 use App\Contracts\TransactionBackend;
 use App\Models\User;
+use App\Services\NativeBackend;
 use App\Services\NullBackend;
 use App\Services\PhyrhoseBackend;
 use App\Services\ProxyBackend;
 use App\Support\ClaimToken;
+use App\Support\Housekeeping;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\HttpFactory;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\URL;
@@ -26,6 +32,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -59,6 +66,9 @@ class AppServiceProvider extends ServiceProvider
             $app->make(CacheRepository::class),
             $app->make(LoggerInterface::class),
         ));
+
+        // Remembers the runs this process has open between a command starting and finishing.
+        $this->app->singleton(Housekeeping::class);
     }
 
     /**
@@ -68,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
     public static function resolveBackend(?string $name): TransactionBackend
     {
         return match ($name) {
+            'native' => app(NativeBackend::class),
             'phyrhose' => new PhyrhoseBackend,
             'proxy' => new ProxyBackend,
             'null', null, '' => new NullBackend,
@@ -78,7 +89,7 @@ class AppServiceProvider extends ServiceProvider
             // onto each wallet for its whole life. Refusing at boot is the only point where
             // the mistake is still cheap.
             default => throw new InvalidArgumentException(
-                "Unknown transaction backend [{$name}]. Set TRANSACTION_BACKEND to phyrhose, proxy or null."
+                "Unknown transaction backend [{$name}]. Set TRANSACTION_BACKEND to phyrhose, proxy, native or null."
             ),
         };
     }
@@ -106,15 +117,38 @@ class AppServiceProvider extends ServiceProvider
         // rather than a change to an environment variable.
         Gate::define('platform-metrics', static fn (User $user) => $user->is_admin === true);
 
+        // A housekeeping task's command run by the scheduler, or by hand, records its run
+        // the same way a run queued by traffic does, so traffic does not repeat it. A
+        // failure here is logged and never stops the command itself.
+        Event::listen(CommandStarting::class, static function (CommandStarting $event) {
+            try {
+                app(Housekeeping::class)->commandStarting((string) $event->command);
+            } catch (Throwable $e) {
+                Log::warning('Housekeeping: could not record a task starting', ['command' => $event->command, 'error' => $e->getMessage()]);
+            }
+        });
+
+        Event::listen(CommandFinished::class, static function (CommandFinished $event) {
+            try {
+                app(Housekeeping::class)->commandFinished((string) $event->command, (int) $event->exitCode);
+            } catch (Throwable $e) {
+                Log::warning('Housekeeping: could not record a task finishing', ['command' => $event->command, 'error' => $e->getMessage()]);
+            }
+        });
+
         Http::macro('mainnet_phyrhose', function () {
             return Http::withToken(config('cardano.phyrhose.mainnet_jwt'))
                 ->acceptJson()
+                ->timeout((int) config('cardano.phyrhose.timeout_seconds', 10))
+                ->connectTimeout((int) config('cardano.phyrhose.connect_timeout_seconds', 5))
                 ->baseUrl(config('cardano.phyrhose.mainnet_url'));
         });
 
         Http::macro('preprod_phyrhose', function () {
             return Http::withToken(config('cardano.phyrhose.preprod_jwt'))
                 ->acceptJson()
+                ->timeout((int) config('cardano.phyrhose.timeout_seconds', 10))
+                ->connectTimeout((int) config('cardano.phyrhose.connect_timeout_seconds', 5))
                 ->baseUrl(config('cardano.phyrhose.preprod_url'));
         });
 
@@ -181,6 +215,12 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(6)
                 ->by(($request->user()?->id ?? $request->ip()).'|campaign:'.$campaignKey);
+        });
+
+        // Viewing the claim page, kept apart from claim-api so that page views cannot spend
+        // the claim budget of a campaign. Same per-IP figure.
+        RateLimiter::for('claim-page', static function (Request $request) {
+            return Limit::perMinute(config('cardano.claim_rate_per_ip', 60))->by('page:'.$request->ip());
         });
 
         RateLimiter::for('claim-api', static function (Request $request) {

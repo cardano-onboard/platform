@@ -95,11 +95,164 @@ class ChainData
     }
 
     /**
+     * The lovelace in one output if it is unspent, or null if it is spent or unknown.
+     *
+     * Asked for by reference, so the cost does not grow with everything else held at the same
+     * address. The fee address holds an output for every campaign that has collected a fee, and
+     * the one a campaign cares about is named by its record.
+     *
+     * @throws ProviderException
+     */
+    public function unspentOutput(string $network, string $txHash, int $index): ?int
+    {
+        $row = $this->outputRow($network, $txHash, $index);
+
+        return $row === null || ($row['is_spent'] ?? false) === true || ! is_numeric($row['value'] ?? null) ? null : (int) $row['value'];
+    }
+
+    /**
+     * Whether the provider says this output has been spent. An output it does not know is not
+     * said to be spent: a child of a transaction still in the mempool spends outputs the provider
+     * has never seen.
+     *
+     * @throws ProviderException
+     */
+    public function outputIsSpent(string $network, string $txHash, int $index): bool
+    {
+        return ($this->outputRow($network, $txHash, $index)['is_spent'] ?? false) === true;
+    }
+
+    /**
+     * @return ?array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    private function outputRow(string $network, string $txHash, int $index): ?array
+    {
+        $base = rtrim((string) config('cardano.koios.'.$network.'_url'), '/');
+
+        if ($base === '') {
+            throw new ProviderException(sprintf('KOIOS_%s_URL is not set, so there is no chain data for %s.', strtoupper($network), $network));
+        }
+
+        $request = $this->requests->createRequest('POST', $base.'/utxo_info')
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('Content-Type', 'application/json')
+            ->withBody($this->streams->createStream(json_encode(['_utxo_refs' => [$txHash.'#'.$index], '_extended' => false], JSON_THROW_ON_ERROR)));
+
+        if ($token = (string) config('cardano.koios.token')) {
+            $request = $request->withHeader('Authorization', 'Bearer '.$token);
+        }
+
+        // Tried again as the provider's other calls are, on a connection that fails, on a server
+        // that answers with an error and on being told to slow down, and not on an answer that
+        // says no.
+        $attempts = max(1, (int) config('cardano.koios.retries', 3));
+
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $response = $this->http->sendRequest($request);
+
+                if (($response->getStatusCode() >= 500 || $response->getStatusCode() === 429) && $attempt < $attempts) {
+                    continue;
+                }
+
+                break;
+            } catch (\Psr\Http\Client\ClientExceptionInterface $e) {
+                if ($attempt >= $attempts) {
+                    throw new ProviderException($e->getMessage(), 0, $e);
+                }
+            }
+        }
+
+        if ($response->getStatusCode() >= 400) {
+            throw new ProviderException(sprintf('%s answered utxo_info with status %d.', $network, $response->getStatusCode()));
+        }
+
+        $rows = json_decode((string) $response->getBody(), true);
+
+        if (! is_array($rows)) {
+            throw new ProviderException(sprintf('%s answered utxo_info with something that is not a list.', $network));
+        }
+
+        foreach ($rows as $row) {
+            if (is_array($row) && ($row['tx_hash'] ?? null) === $txHash && (int) ($row['tx_index'] ?? -1) === $index) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @throws ProviderException
      */
     public function balance(string $network, string $address): Value
     {
         return $this->provider($network)->addressBalance($address);
+    }
+
+    /**
+     * Where the chain is now, as a slot and the time that slot happened at.
+     *
+     * Read rather than derived. A slot number can be worked out from an epoch and a known era
+     * start, and doing so means writing down when each era began and how long its slots are: a
+     * set of constants that are correct until a hard fork, silently wrong afterwards, and wrong
+     * in a way that puts a bad expiry inside an address nobody can change. Asking the chain what
+     * slot it is costs one request and cannot drift.
+     *
+     * @return array{slot: int, time: int}
+     *
+     * @throws ProviderException
+     */
+    public function tip(string $network): array
+    {
+        $base = rtrim((string) config('cardano.koios.'.$network.'_url'), '/');
+
+        if ($base === '') {
+            throw new ProviderException(sprintf('KOIOS_%s_URL is not set, so there is no chain data for %s.', strtoupper($network), $network));
+        }
+
+        // Through the PSR interfaces this class already holds rather than through the package's
+        // own request helper, which the package marks internal. Reaching past a package's public
+        // surface works until the package moves something, and a tip read is not worth owing that
+        // to. The right home for this is the package itself, where the block contract already
+        // describes it and the provider has yet to implement it.
+        $request = $this->requests->createRequest('GET', $base.'/tip')
+            ->withHeader('Accept', 'application/json');
+
+        if ($token = (string) config('cardano.koios.token')) {
+            $request = $request->withHeader('Authorization', 'Bearer '.$token);
+        }
+
+        $response = $this->http->sendRequest($request);
+
+        if ($response->getStatusCode() >= 400) {
+            throw new ProviderException(sprintf(
+                '%s answered the tip with status %d.',
+                $network,
+                $response->getStatusCode(),
+            ));
+        }
+
+        $rows = json_decode((string) $response->getBody(), true);
+
+        if (! is_array($rows) || ! isset($rows[0]) || ! is_array($rows[0])) {
+            throw new ProviderException(sprintf('%s answered the tip with something that is not a row.', $network));
+        }
+
+        $slot = $rows[0]['abs_slot'] ?? null;
+        $time = $rows[0]['block_time'] ?? null;
+
+        if (! is_numeric($slot) || ! is_numeric($time)) {
+            throw new ProviderException(sprintf(
+                '%s answered the tip without an absolute slot and a block time, so nothing here knows what '
+                .'slot it is.',
+                $network,
+            ));
+        }
+
+        return ['slot' => (int) $slot, 'time' => (int) $time];
     }
 
     /**

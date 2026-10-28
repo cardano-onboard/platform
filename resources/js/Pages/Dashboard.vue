@@ -42,6 +42,7 @@ const campaign = useForm({
     end_date: null,
     network: null,
     one_per_wallet: 0,
+    desktop_claims_enabled: 0,
     txn_msg: null,
     nmkr_api_key: null,
     max_codes: null,
@@ -340,6 +341,12 @@ function confirmRemove() {
                         <v-switch v-model="campaign.one_per_wallet"
                                   color="primary"
                                   label="Limit one claim per wallet?"
+                                  :true-value="1" :false-value="0"/>
+                        <v-switch v-model="campaign.desktop_claims_enabled"
+                                  color="primary"
+                                  label="Allow claims from a desktop browser"
+                                  hint="Off: the claim link opens only in a wallet app. On: recipients can also claim on a web page by connecting a wallet extension."
+                                  persistent-hint
                                   :true-value="1" :false-value="0"/>
                         <v-select v-model="campaign.network" :items="networks"
                                   label="Network" required

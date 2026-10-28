@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\TransactionBackend;
 use App\Models\Campaign;
 use App\Support\MinUtxo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +47,8 @@ class PhyrhoseBackend implements TransactionBackend
         $payload = [
             'projectId' => $networkId,
             'campaignId' => $campaignId,
-            'recipients' => $recipients,
+            // The claim id is for backends that pay claim by claim; the custodian's payload is as it was.
+            'recipients' => array_map(static fn (array $recipient): array => Arr::except($recipient, 'claimId'), $recipients),
         ];
 
         if ($txnMsg) {
@@ -61,7 +63,11 @@ class PhyrhoseBackend implements TransactionBackend
             'payload' => $payload,
         ]);
 
-        $response = $phyrhose->post('dripdropz/v1/pooPurchaseOrder', $payload);
+        // Its own, longer timeout: a send the backend took but answered too late for would
+        // look unsent, and the next run would pay the same claims again.
+        $response = $phyrhose
+            ->timeout((int) config('cardano.phyrhose.submit_timeout_seconds', 60))
+            ->post('dripdropz/v1/pooPurchaseOrder', $payload);
         $json = $response->json();
 
         Log::info('PhyrhoseBackend: pooPurchaseOrder response', [
@@ -97,8 +103,24 @@ class PhyrhoseBackend implements TransactionBackend
         return ['purchaseIds' => $ids];
     }
 
+    /**
+     * Phyrhose purchase ids are integers, and its status endpoint answers anything else with
+     * a parse error, so an id like that can never get an answer. Such ids exist in real data:
+     * the demo campaign seeder writes a UUID as the transaction id of its pending claims, and
+     * older rows carry them too. Asking would only produce an error on every pass, so the
+     * claim is reported as unknown without a request and stays awaiting confirmation.
+     */
     public function checkStatus(string $purchaseId, string $network): array
     {
+        if (! ctype_digit($purchaseId)) {
+            Log::info('PhyrhoseBackend: purchaseStatus skipped, purchase id is not an integer', [
+                'network' => $network,
+                'purchase_id' => $purchaseId,
+            ]);
+
+            return ['status' => 'unknown', 'txHash' => null];
+        }
+
         $phyrhose = $this->client($network);
 
         Log::info('PhyrhoseBackend: GET purchaseStatus', [

@@ -6,7 +6,7 @@ Onboard.Ninja is an open-source, self-hosted platform for running Cardano token 
 
 It implements [CIP-99](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0099), the Cardano standard for onboarding claims, and ships with an on-chain onboarding analysis that reports which claimant wallets were new, which went on to transact on their own, and which delegated to a stake pool.
 
-**What self-hosted means here.** Your instance holds your data: claimant addresses, stake keys and the onboarding analysis stay in your database and are not sent anywhere. Putting a transaction on chain is the exception. That still needs a transaction backend, and there is currently no option that submits without one. See [Transaction Backend](#transaction-backend) before you deploy, not after.
+**What self-hosted means here.** Your instance keeps its records, including claimant addresses, stake keys and the onboarding analysis, in your own database. Claimant data leaves it in three ways. Payments carry claimant addresses: on the native backend your instance submits each payment transaction to Koios, and with the `phyrhose` or `proxy` backend it sends each claim's address and reward to Phyrhose or the hosted proxy to be paid. The onboarding analysis asks Koios about each claimant's wallet history by stake key, whichever backend you use. A code with an NMKR NFT reward sends the claimant's address to NMKR to mint and send the NFT, whichever backend you use. Koios requests go to its public endpoints unless you point the `KOIOS_*_URL` settings at your own. On the native backend, the default, your instance also builds and signs the transactions: each campaign holds its own key and pays from its own address, with no transaction service holding your keys or funds. Phyrhose and the hosted proxy remain available as alternatives. See [Transaction Backend](#transaction-backend) before you deploy: three things must be supplied before the first campaign.
 
 ---
 
@@ -173,8 +173,9 @@ cp .env.example .env
 php artisan key:generate
 # Edit .env — see Configuration section below
 
-# 5. Run database migrations and seed default data
+# 5. Run database migrations, load the known-asset registry and create the admin account
 php artisan migrate --seed
+php artisan db:seed --class=AdminSeeder
 
 # 6. Start the development server
 php artisan serve
@@ -188,6 +189,8 @@ For production deployments, serve the application with a proper web server (ngin
 php artisan queue:work
 php artisan schedule:work
 ```
+
+Without the scheduler, the periodic maintenance tasks (the token registry refresh and the QR export cleanup) still run: once a task is due, requests queue a check at most once a minute, and the queue worker runs whichever task is overdue. A task that fails is tried again after a wait that doubles with each failure in a row. Set `HOUSEKEEPING_ON_TRAFFIC=false` to rely on the scheduler alone. See [Scheduled maintenance](docs/guide/configuration.md#scheduled-maintenance).
 
 ---
 
@@ -226,16 +229,16 @@ QUEUE_CONNECTION=database       # or redis
 
 ### Transaction Backend
 
-The default backend is `null` (test mode). See the [Transaction Backend](#transaction-backend) section below for how to switch to a live backend.
+The default backend is `native`: the instance submits its own transactions. See the [Transaction Backend](#transaction-backend) section below for what it needs and for the alternatives.
 
 ```env
-# Start in test mode (fake wallets, no real transactions)
-TRANSACTION_BACKEND=null
+# The default: this instance submits its own transactions
+TRANSACTION_BACKEND=native
 ```
 
 ### NMKR (optional)
 
-NMKR Studio is an alternative backend option. API keys are optional if you are using a different backend implementation.
+NMKR Studio mints and sends NFT rewards, on any transaction backend. Enter the NMKR API key on the campaign; that key is the one that mints, and it is needed only if a code carries an NMKR NFT reward. The two API URLs below choose the endpoint: mainnet campaigns use the mainnet URL, and preprod and preview campaigns use the preprod one. The two API key settings are replaced by the campaign's key at claim time and are not used as a fallback.
 
 ```env
 NMKR_PREPROD_API_URL=https://studio-api.preprod.nmkr.io/v2/
@@ -251,15 +254,15 @@ Network is selected per campaign (mainnet, preprod, or preview). No global netwo
 
 ### Admin / First User
 
-There is no separate admin role. Register an account through the web UI at `/register`. The first registered user owns their own campaigns. In a private deployment you can disable public registration by removing or restricting the `/register` route in `routes/auth.php`.
+A self-hosted install has no sign-up, email verification, password reset or profile page, and no separate admin role. It has one account, created by the admin seeder from `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`. `quickstart.sh` sets both. The Docker entrypoint runs the seeder on every start, and on a manual install you run it yourself with `php artisan db:seed --class=AdminSeeder`. Sign in at `/login` with those credentials. The seeder marks the account's email as verified, and if the account already exists it sets its password back to `ADMIN_PASSWORD`; see "Changing the admin password later" above. That account owns every campaign.
 
 ---
 
 ## Using the Platform
 
-### 1. Register and log in
+### 1. Log in
 
-Navigate to your deployment URL and register an account.
+Navigate to your deployment URL and log in with the admin credentials from your `.env`.
 
 ### 2. Create a campaign
 
@@ -285,7 +288,7 @@ Distribute codes to recipients via email, event check-in, QR code, or any other 
 
 ### 4. Recipients claim tokens
 
-Share the campaign claim URL (shown on the campaign page) with recipients. They enter their claim code and a Cardano wallet address. The platform validates the code, checks wallet eligibility if one-per-wallet is enabled, and queues the transaction.
+Share the campaign claim URL (shown on the campaign page) with recipients. Wallets scan the QR code and submit their own address. Only with **Allow claims from a desktop browser** switched on for the campaign does the claim URL also work in a desktop browser, where the recipient enters the claim code and connects a CIP-30 wallet extension. The platform validates the code, checks wallet eligibility if one-per-wallet is enabled, and queues the transaction.
 
 ### 5. Monitor claims
 
@@ -296,7 +299,7 @@ The campaign detail page shows all claims with their current status:
 - **Completed** — confirmed on-chain with a transaction hash
 - **Failed** — exceeded retry limit; manual intervention may be required
 
-Use the **Check Claims** button to manually trigger a status check for pending transactions. The scheduler also checks automatically every five minutes.
+Use the **Check Claims** button to manually trigger a status check for pending transactions. The platform also checks automatically shortly after sending a batch, whenever the code status endpoint or a repeated claim asks about a waiting claim, and every five minutes on the scheduler.
 
 ### 6. Refund remaining balance
 
@@ -308,7 +311,43 @@ After a campaign ends, use the **Refund** button to return any unclaimed tokens 
 
 The platform uses a pluggable transaction backend controlled by the `TRANSACTION_BACKEND` environment variable. No code changes are needed to switch between backends.
 
-### `null` — Test Mode (default)
+### `native` — Your Own Transactions (default)
+
+```env
+TRANSACTION_BACKEND=native
+CAMPAIGN_WRAPPING_KEY_1=
+CAMPAIGN_OWNER_KEY_HASH_1=
+CAMPAIGN_OWNER_KEY_HASH_2=
+CAMPAIGN_STAKE_ADDRESS_PREPROD=
+```
+
+- Each campaign gets its own signing key and address; the instance builds, signs and submits every payment itself
+- No transaction service holds your keys or funds; chain reads and submission go to Koios, its public endpoints or your own through the `KOIOS_*_URL` settings
+
+Three things are supplied once, before the first campaign is created. Without them campaign
+creation is refused, and the message names each variable that is missing.
+
+1. **A wrapping key.** It encrypts the signing key of every campaign. Make one and put it in
+   `CAMPAIGN_WRAPPING_KEY_1`:
+
+   ```bash
+   openssl rand -base64 32
+   # or, without openssl:
+   php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'
+   ```
+
+   Keep a copy somewhere other than the server. If it is lost, the campaign keys encrypted under it
+   cannot be read. `quickstart.sh` generates one for you.
+2. **Two recovery key hashes**, in `CAMPAIGN_OWNER_KEY_HASH_1` and `CAMPAIGN_OWNER_KEY_HASH_2`, from
+   two wallets you hold. Either wallet can always spend a campaign's funds, whatever happens to
+   this server, and a hash cannot be added to a campaign's address afterward. A hash is 56
+   lowercase hex characters: the payment key hash of an address in the wallet, for example from
+   `cardano-cli address key-hash --payment-verification-key-file payment.vkey`.
+3. **A stake address** for each network you use, in `CAMPAIGN_STAKE_ADDRESS_PREPROD` or
+   `CAMPAIGN_STAKE_ADDRESS_MAINNET`. Campaign funds are staked with it, so they keep earning while
+   they wait. It begins `stake_test1` on preprod and `stake1` on mainnet.
+
+### `null` — Test Mode
 
 ```env
 TRANSACTION_BACKEND=null
@@ -319,7 +358,7 @@ TRANSACTION_BACKEND=null
 - Perfect for verifying your deployment, testing the UI, and running demos
 - **Do NOT send real ADA or tokens** to any wallet addresses shown in test mode
 
-> **Tip:** Start with `null` to confirm everything is working, then switch to a live backend when ready.
+> **Tip:** Set `null` to look around the interface without real transactions, then switch to a live backend when ready.
 
 ### `phyrhose` — Direct Phyrhose Connection
 
@@ -340,7 +379,7 @@ PHYRHOSE_MAINNET_ID=your-mainnet-project-id
 - Connects directly to the [Phyrhose](https://phyrhose.io) transaction service
 - Obtain credentials by signing up at phyrhose.io
 - Each campaign selects its network (preprod or mainnet) — the correct credentials are used automatically
-- **Recommended for production** if you have your own Phyrhose account
+- An alternative to `native` if you would rather not hold campaign keys on your own server
 
 ### `proxy` — SaaS Proxy Relay
 
@@ -357,8 +396,8 @@ PROXY_API_TOKEN=your-api-token
 
 ### Switching to Live Mode
 
-1. Set `TRANSACTION_BACKEND` to `phyrhose` or `proxy` in your `.env`
-2. Fill in the corresponding credentials
+1. Set `TRANSACTION_BACKEND` to `native`, `phyrhose` or `proxy` in your `.env`
+2. Fill in the corresponding settings or credentials
 3. Restart the application (or run `php artisan config:clear`)
 4. The TEST MODE banner disappears automatically
 

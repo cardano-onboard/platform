@@ -36,8 +36,7 @@ function makeCode(overrides = {}) {
         nmkr_count_nft: 0,
         rewards: [{ policy_hex: POLICY, asset_hex: ASSET, quantity: 5 }],
         min_utxo: {
-            min_lovelace: 1159390,
-            recommended_lovelace: 2159390,
+            min_lovelace: 1150770,
             state: 'ok',
             warning: null,
         },
@@ -87,9 +86,7 @@ function mountShow(campaignOverrides = {}) {
 function quote(overrides = {}) {
     return {
         data: {
-            min_lovelace: 1159390,
-            headroom_lovelace: 1000000,
-            recommended_lovelace: 2159390,
+            min_lovelace: 1150770,
             coins_per_utxo_byte: 4310,
             source: 'koios',
             asset_count: 1,
@@ -221,25 +218,52 @@ describe('CampaignShow reward editing', () => {
 
         const hint = document.querySelector('[data-test="edit-min-utxo-hint"]');
         expect(hint).not.toBeNull();
-        expect(hint.textContent).toContain('1.15939 ADA');
+        expect(hint.textContent).toContain('1.15077 ADA');
     });
 
-    it('refuses an amount under the chain minimum and warns about one with no room', async () => {
+    it('moves a below-minimum amount up to the minimum once the bundle is quoted', async () => {
+        wrapper = mountShow({
+            codes: [makeCode({ lovelace: '1000000' })],
+        });
+        await openEdit(wrapper);
+
+        expect(editLovelace(wrapper).props('modelValue')).toBe(1150770);
+    });
+
+    it('leaves an amount above the minimum alone', async () => {
+        wrapper = mountShow();
+        await openEdit(wrapper);
+
+        expect(editLovelace(wrapper).props('modelValue')).toBe(3000000);
+        expect(document.querySelector('[data-test="edit-min-utxo-below"]')).toBeNull();
+    });
+
+    it('raises a typed amount on leaving the field, and keeps one at or above the minimum', async () => {
         wrapper = mountShow();
         await openEdit(wrapper);
 
         await editLovelace(wrapper).setValue(1000000);
         await settle(wrapper);
         expect(document.querySelector('[data-test="edit-min-utxo-below"]')).not.toBeNull();
+        expect(editLovelace(wrapper).props('modelValue')).toBe(1000000);
 
-        await editLovelace(wrapper).setValue(1200000);
+        await editLovelace(wrapper).find('input').trigger('blur');
         await settle(wrapper);
+        expect(editLovelace(wrapper).props('modelValue')).toBe(1150770);
         expect(document.querySelector('[data-test="edit-min-utxo-below"]')).toBeNull();
-        expect(document.querySelector('[data-test="edit-min-utxo-tight"]')).not.toBeNull();
 
         await editLovelace(wrapper).setValue(5000000);
+        await editLovelace(wrapper).find('input').trigger('blur');
         await settle(wrapper);
+        expect(editLovelace(wrapper).props('modelValue')).toBe(5000000);
+    });
+
+    it('has no suggestion or tight warning', async () => {
+        wrapper = mountShow();
+        await openEdit(wrapper);
+
         expect(document.querySelector('[data-test="edit-min-utxo-tight"]')).toBeNull();
+        expect(document.querySelector('[data-test="edit-min-utxo-hint"]').textContent).not.toContain('Suggested');
     });
 
     it('says how many claims keep what they were already sent', async () => {
@@ -356,7 +380,8 @@ describe('CampaignShow reward editing', () => {
 
         const fields = fieldsLabelled(wrapper, 'Lovelace');
         expect(fields).toHaveLength(1);
-        expect(fields[0].props('modelValue')).toBe(1000000);
+        // The create default of 1 ADA, raised to the mocked minimum for an empty quote.
+        expect(fields[0].props('modelValue')).toBe(1150770);
     }, DIALOG_ROUND_TRIP_TIMEOUT);
 
     /**

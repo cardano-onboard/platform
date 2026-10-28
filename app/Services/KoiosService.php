@@ -6,6 +6,7 @@ use App\Cardano\AssetMetadataReader;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 class KoiosService
 {
@@ -250,15 +251,6 @@ class KoiosService
     }
 
     /**
-     * Fetch one page of the curated token registry (`asset_token_registry`) — the
-     * source for the periodic known-assets sync. Returns raw Koios rows.
-     */
-    /**
-     * @return array|null Rows for the page (an empty array means end-of-registry), or
-     *                    null if the request kept failing — so callers can distinguish a
-     *                    genuine end from a transient failure and not truncate the sync.
-     */
-    /**
      * Whether a decoded list actually holds rows.
      *
      * A list on its own is not enough. A provider under load answers 200 with a list of
@@ -280,11 +272,32 @@ class KoiosService
         return true;
     }
 
+    /**
+     * The registry columns the known-assets sync stores.
+     *
+     * Koios also returns `logo`, a base64 PNG per row, which put a mainnet page at about
+     * 40 MB against about 267 KB without it. The sync discards the logo, and a logo is
+     * fetched on demand through the `asset_info` lookup instead. There is no `name` column
+     * in the registry, and PostgREST answers a column it does not know with a 400, so the
+     * list names only columns that exist.
+     */
+    private const REGISTRY_COLUMNS = 'policy_id,asset_name,asset_name_ascii,ticker,description,url,decimals';
+
+    /**
+     * Fetch one page of the curated token registry (`asset_token_registry`), the source
+     * for the periodic known-assets sync. Returns raw Koios rows, limited to
+     * REGISTRY_COLUMNS.
+     *
+     * @return array|null Rows for the page (an empty array means end-of-registry), or
+     *                    null if the request kept failing, so callers can distinguish a
+     *                    genuine end from a transient failure and not truncate the sync.
+     */
     public function tokenRegistryPage(int $offset, int $limit = 1000, string $network = 'mainnet'): ?array
     {
         for ($attempt = 1; $attempt <= 4; $attempt++) {
             try {
                 $response = Http::koios($network)->get('asset_token_registry', [
+                    'select' => self::REGISTRY_COLUMNS,
                     'offset' => $offset,
                     'limit' => $limit,
                 ]);
@@ -314,7 +327,7 @@ class KoiosService
                 Log::error("Koios asset_token_registry error (attempt {$attempt}): ".$e->getMessage());
             }
 
-            sleep($attempt); // linear backoff — rides out rate limits (429) on later pages
+            Sleep::sleep($attempt); // linear backoff — rides out rate limits (429) on later pages
         }
 
         return null; // hard failure after retries

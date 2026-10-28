@@ -80,7 +80,7 @@ class MinUtxoServiceTest extends TestCase
 
         $this->assertSame(8620, $quote['coins_per_utxo_byte']);
         $this->assertSame('koios', $quote['source']);
-        $this->assertSame(2 * 1_159_390, $quote['min_lovelace']);
+        $this->assertSame(2 * 1_150_770, $quote['min_lovelace']);
     }
 
     public function test_a_backend_that_reports_nothing_usable_falls_back_and_says_so(): void
@@ -118,42 +118,30 @@ class MinUtxoServiceTest extends TestCase
         $quote = $service->quote($this->bundle(), 'mainnet', 1_000_000);
 
         $this->assertSame('below_minimum', $quote['state']);
-        $this->assertStringContainsString('1.15939', $quote['warning']);
+        $this->assertStringContainsString('1.15077', $quote['warning']);
         $this->assertStringContainsString('reject', $quote['warning']);
     }
 
-    public function test_an_amount_on_the_minimum_is_tight_rather_than_refused(): void
+    public function test_an_amount_on_the_minimum_is_ok_and_says_nothing(): void
     {
-        config(['cardano.min_utxo.headroom_lovelace' => 1_000_000]);
         $service = new MinUtxoService($this->backend(['coins_per_utxo_byte' => 4310, 'source' => 'koios']));
 
-        $quote = $service->quote($this->bundle(), 'mainnet', 1_159_390);
-
-        $this->assertSame('tight', $quote['state']);
-        $this->assertSame(2_159_390, $quote['recommended_lovelace']);
-        $this->assertStringContainsString('0 ADA of room', $quote['warning']);
-    }
-
-    public function test_an_amount_clearing_the_headroom_says_nothing(): void
-    {
-        config(['cardano.min_utxo.headroom_lovelace' => 1_000_000]);
-        $service = new MinUtxoService($this->backend(['coins_per_utxo_byte' => 4310, 'source' => 'koios']));
-
-        $quote = $service->quote($this->bundle(), 'mainnet', 2_159_390);
+        $quote = $service->quote($this->bundle(), 'mainnet', 1_150_770);
 
         $this->assertSame('ok', $quote['state']);
         $this->assertNull($quote['warning']);
+        $this->assertArrayNotHasKey('recommended_lovelace', $quote);
+        $this->assertArrayNotHasKey('headroom_lovelace', $quote);
     }
 
-    public function test_the_headroom_boundary_moves_with_configuration(): void
+    public function test_the_effective_amount_is_the_higher_of_entered_and_minimum(): void
     {
         $service = new MinUtxoService($this->backend(['coins_per_utxo_byte' => 4310, 'source' => 'koios']));
 
-        config(['cardano.min_utxo.headroom_lovelace' => 0]);
-        $this->assertSame('ok', $service->quote($this->bundle(), 'mainnet', 1_159_390)['state']);
-
-        config(['cardano.min_utxo.headroom_lovelace' => 5_000_000]);
-        $this->assertSame('tight', $service->quote($this->bundle(), 'mainnet', 5_000_000)['state']);
+        $this->assertSame(1_150_770, $service->effectiveLovelace($this->bundle(), 'mainnet', 1_000_000));
+        $this->assertSame(1_150_770, $service->effectiveLovelace($this->bundle(), 'mainnet', 1_150_770));
+        $this->assertSame(10_000_000, $service->effectiveLovelace($this->bundle(), 'mainnet', 10_000_000));
+        $this->assertSame(1_000_000, $service->effectiveLovelace([], 'mainnet', 1_000_000));
     }
 
     public function test_no_amount_asked_about_means_no_verdict(): void

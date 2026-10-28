@@ -13,11 +13,18 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class OnboardingAnalysisServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Sleep::fake();
+    }
 
     private const CLAIM_TX = 'aa11';
 
@@ -1010,6 +1017,21 @@ class OnboardingAnalysisServiceTest extends TestCase
         $this->assertFalse($unread['windows_available']);
     }
 
+    public function test_a_paced_run_waits_a_quarter_second_between_koios_calls(): void
+    {
+        $campaign = $this->campaignWithClaim('stake1u'.str_repeat('e', 50));
+
+        Http::fake([
+            '*tx_info*' => Http::response([]),
+            '*account_txs*' => Http::response([['tx_hash' => self::CLAIM_TX, 'block_height' => 1000]]),
+            '*account_info*' => Http::response([]),
+        ]);
+
+        (new OnboardingAnalysisService)->analyze($campaign);
+
+        Sleep::assertSequence(array_fill(0, 3, Sleep::usleep(250_000)));
+    }
+
     /**
      * A claim transaction the provider would not answer for leaves the wallet unknown.
      *
@@ -1031,6 +1053,9 @@ class OnboardingAnalysisServiceTest extends TestCase
 
         $analysis = $this->analyze($campaign);
         $insight = $campaign->walletInsights()->firstOrFail();
+
+        // The failing read is tried three times, 750 ms apart.
+        Sleep::assertSequence([Sleep::usleep(750_000), Sleep::usleep(750_000)]);
 
         $this->assertNull($insight->is_new);
         $this->assertNull($insight->prior_tx_count);

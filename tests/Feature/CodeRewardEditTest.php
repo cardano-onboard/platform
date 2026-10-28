@@ -83,6 +83,15 @@ class CodeRewardEditTest extends TestCase
         );
     }
 
+    public function test_editing_refuses_a_token_that_can_never_be_paid(): void
+    {
+        $this->edit(['tokens' => [['policy_id' => substr(self::POLICY, 1), 'token_id' => self::ASSET, 'quantity' => 5]]])
+            ->assertSessionHasErrors('tokens.0.policy_id');
+
+        $this->edit(['tokens' => [['policy_id' => self::POLICY, 'token_id' => 'fff', 'quantity' => 5]]])
+            ->assertSessionHasErrors('tokens.0.token_id');
+    }
+
     /** A claim taken and then submitted, which is when a reward is recorded. */
     private function claimAndSend(string $address = self::ADDRESS, string $stake = self::STAKE): Claim
     {
@@ -260,22 +269,47 @@ class CodeRewardEditTest extends TestCase
     // What the edit refuses, and what it only warns about.
     // ---------------------------------------------------------------------------------
 
-    public function test_an_edit_below_the_chain_minimum_is_refused_and_changes_nothing(): void
+    public function test_one_ada_with_a_native_asset_is_saved_at_exactly_the_minimum(): void
     {
-        $this->edit(['lovelace' => 1_000_000])->assertSessionHasErrors('lovelace');
+        $this->edit(['lovelace' => 1_000_000])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('message');
+
+        $this->assertSame(1_150_770, (int) $this->code->fresh()->lovelace);
+        $this->assertStringContainsString('raised from 1 ADA to 1.15077 ADA', session('message'));
+    }
+
+    public function test_ten_ada_with_native_assets_stays_ten_ada(): void
+    {
+        $this->edit(['lovelace' => 10_000_000])->assertSessionHasNoErrors();
+
+        $this->assertSame(10_000_000, (int) $this->code->fresh()->lovelace);
+    }
+
+    public function test_adding_an_asset_to_an_ada_only_reward_raises_it(): void
+    {
+        $plain = Code::factory()->for($this->campaign)->create(['lovelace' => 1_000_000, 'uses' => 1]);
+
+        $this->edit(['lovelace' => 1_000_000], $plain)->assertSessionHasNoErrors();
+
+        $this->assertSame(1_150_770, (int) $plain->fresh()->lovelace);
+    }
+
+    public function test_an_edit_below_the_flat_floor_is_still_refused_and_changes_nothing(): void
+    {
+        $this->edit(['lovelace' => 999_999])->assertSessionHasErrors('lovelace');
 
         $this->assertSame(3_000_000, (int) $this->code->fresh()->lovelace);
         $this->assertCount(1, $this->code->fresh()->rewards);
     }
 
-    public function test_an_edit_that_leaves_no_room_is_saved_and_warned_about(): void
+    public function test_an_edit_on_the_minimum_is_saved_without_a_warning(): void
     {
-        $this->edit(['lovelace' => 1_159_390])
-            ->assertSessionHasNoErrors()
-            ->assertSessionHas('message');
+        $this->edit(['lovelace' => 1_150_770])
+            ->assertSessionHasNoErrors();
 
-        $this->assertSame(1_159_390, (int) $this->code->fresh()->lovelace);
-        $this->assertStringContainsString('of room', session('message'));
+        $this->assertSame(1_150_770, (int) $this->code->fresh()->lovelace);
+        $this->assertStringNotContainsString('raised', (string) session('message'));
     }
 
     public function test_the_operator_is_told_what_the_change_reaches(): void

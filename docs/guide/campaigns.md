@@ -10,7 +10,10 @@ dedicated **bucket wallet** that funds the rewards.
 3. Pick a **network** — `preprod` (default, for testing), `preview`, or `mainnet`.
 4. Set the **start** and **end** dates for the claim window.
 5. Optionally set **one-per-wallet** and a transaction message.
-6. Save.
+6. Leave **Allow claims from a desktop browser** off unless you want recipients to be
+   able to claim on a web page. It is off by default. See
+   [On a desktop](./claiming#on-a-desktop).
+7. Save.
 
 The network list in step 3 holds only the networks this deployment accepts. See
 [Allowed networks](./configuration#allowed-networks).

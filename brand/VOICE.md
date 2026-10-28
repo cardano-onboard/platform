@@ -71,8 +71,8 @@ as a property of the design rather than as a problem being defended against.
 **Specific with numbers, and specific about their limits.** For organisers and developers, the
 product's credibility rests on figures anyone can check on chain. Adjectives throw that away.
 
-**Willing to say what it cannot do.** The editions documentation states plainly that a
-self-hosted instance cannot yet put a transaction on chain by itself, and that page is the most
+**Willing to say what it cannot do.** The editions documentation states plainly where the
+self-hosted edition differs from the hosted one, and that page is the most
 trustworthy thing the project has written. In a category whose adjacent keywords are full of
 things that overpromise, saying the limit out loud is a differentiator.
 

@@ -92,7 +92,7 @@ class CampaignPartialReloadTest extends TestCase
     {
         return [
             'X-Inertia' => 'true',
-            'X-Inertia-Version' => (new HandleInertiaRequests)->version(request()),
+            'X-Inertia-Version' => (string) (new HandleInertiaRequests)->version(request()),
             'X-Inertia-Partial-Component' => 'Campaign/Show',
             'X-Inertia-Partial-Data' => implode(',', $only),
         ];

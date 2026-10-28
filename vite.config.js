@@ -49,7 +49,16 @@ export default defineConfig(({ command }) => ({
                 inline: ['vuetify'],
             },
         },
-        css: true,
+        // No test reads computed styles, so skip processing stylesheets.
+        css: false,
+        // The node polyfill plugin replaces `process` in test modules with a shim whose
+        // env is empty, so the CI flag is passed through here for tests to read from
+        // import.meta.env.
+        env: { CI: process.env.CI ?? '' },
+        // CI runners have two vCPUs, which leaves vitest's default of cores minus one
+        // at a single worker. Two workers should cut the wall time there by a third or
+        // so. Elsewhere the default is kept, since a developer machine has more cores.
+        maxWorkers: process.env.CI ? 2 : undefined,
         alias: {
             '@meshsdk/core': path.resolve(__dirname, 'tests/js/__mocks__/meshsdk-core.js'),
             '@/plugins/vue-cardano.js': path.resolve(__dirname, 'tests/js/__mocks__/vue-cardano.js'),

@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Cardano\CampaignScript;
+use App\Cardano\CampaignSlots;
+use App\Cardano\ChainRetention;
+use App\Cardano\FloatUnknown;
+use App\Cardano\NativeWalletFactory;
+use App\Cardano\PlatformFeeKey;
 use App\Contracts\TransactionBackend;
 use App\Jobs\AnalyzeCampaignOnboarding;
 use App\Jobs\CheckClaims;
@@ -25,9 +31,10 @@ use App\Services\OnboardingAnalysisService;
 use App\Services\PartnerConversionService;
 use App\Services\QrExportService;
 use App\Services\QrStickerService;
-use App\Support\MinUtxo;
+use App\Support\PlatformFee;
 use App\Support\Pricing;
 use App\Support\QrExportFolders;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,6 +48,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Psr\Http\Client\ClientExceptionInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CampaignController extends Controller
@@ -60,7 +68,7 @@ class CampaignController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CampaignSlots $slots): RedirectResponse
     {
 
         $validated = $request->validate([
@@ -74,9 +82,10 @@ class CampaignController extends Controller
             'txn_msg' => 'nullable|string|max:64',
             'nmkr_api_key' => 'nullable|string|max:255',
             'max_codes' => 'nullable|integer|min:1|max:1000000',
+            'desktop_claims_enabled' => 'nullable|boolean',
         ]);
 
-        $campaign = Campaign::create([
+        $attributes = [
             'user_id' => Auth::user()->id,
             'name' => strip_tags($validated['name']),
             'description' => strip_tags($validated['description'] ?? ''),
@@ -86,7 +95,73 @@ class CampaignController extends Controller
             'network' => $validated['network'],
             'txn_msg' => strip_tags($validated['txn_msg'] ?? ''),
             'nmkr_api_key' => $validated['nmkr_api_key'] ?? null,
-        ]);
+        ];
+
+        // The authorisation window is settled here or nowhere. It goes inside the campaign's
+        // script and therefore inside its address, so it cannot be decided later or revised: a
+        // campaign created without it is one whose wallet can never be built. Reading the chain
+        // on this path is the accepted cost, and a provider that cannot be reached stops a
+        // campaign being created rather than creating one that is wrong.
+        //
+        // Only for a campaign that will hold its own funds. The creation job stamps the
+        // deployment's configured backend onto the wallet, so that is the backend this campaign
+        // gets for life, and a campaign on a hosted backend has no script, no expiry and no
+        // reason to wait on the chain to be created.
+        if (config('cardano.transaction_backend') === 'native') {
+            // The recovery key hashes, the wrapping key and the stake credential all go inside
+            // the address or protect the key, so a deployment missing any of them refuses the
+            // campaign here, naming each variable, rather than failing later in a job nobody is
+            // watching.
+            $wallets = app(NativeWalletFactory::class);
+
+            if ($missing = $wallets->missingSettings($validated['network'])) {
+                return back()->withErrors(['network' => $wallets->missingMessage($missing)])->withInput();
+            }
+
+            // Every payout of a campaign that pays the platform fee is signed by the fee key, so a
+            // deployment without one cannot run such a campaign at all.
+            if (PlatformFee::required(Pricing::pathFor(Auth::user()), 'native') && ! app(PlatformFeeKey::class)->exists()) {
+                return back()->withErrors(['network' => PlatformFee::missingKeyMessage()])->withInput();
+            }
+
+            $endDate = $this->endOfDay($validated['end_date']);
+            $expiresAt = $slots->expiryDate($endDate);
+
+            // The authorisation is a bounded permission: the campaign key can spend for at most
+            // this many days from creation, grace included. An end date that would carry the
+            // expiry past it is refused, with the latest end date that fits.
+            $authorisationDays = (int) config('campaign_script.authorisation_days', 180);
+            $latestExpiry = CarbonImmutable::now()->addDays($authorisationDays)->endOfDay();
+
+            if ($expiresAt > $latestExpiry) {
+                $graceDays = CampaignSlots::GRACE_DAYS;
+
+                return back()->withErrors([
+                    'end_date' => sprintf(
+                        'A campaign\'s wallet can be spent from for at most %d days, and the last %d of those follow '
+                        .'its end date for settlement, so a campaign created today can end on %s at the latest.',
+                        $authorisationDays,
+                        $graceDays,
+                        $latestExpiry->subDays($graceDays)->toFormattedDateString(),
+                    ),
+                ])->withInput();
+            }
+
+            // A date the chain's timeline cannot place (far in the past, or the provider is down)
+            // is a reason to refuse the end date, not an error page.
+            try {
+                $attributes['expiry_slot'] = $slots->slotAt($validated['network'], $expiresAt);
+            } catch (\RuntimeException|ClientExceptionInterface $e) {
+                return back()->withErrors([
+                    'end_date' => 'The campaign\'s expiry could not be placed on the chain: '.$e->getMessage(),
+                ])->withInput();
+            }
+
+            $attributes['expiry_at'] = $expiresAt;
+            $attributes['funding_path'] = CampaignScript::FUNDING_CREDIT;
+        }
+
+        $campaign = Campaign::create($attributes);
 
         // Assigned rather than mass-assigned, the same reason the spend limit and the
         // alert settings sit outside $fillable: nothing a request carries should be able
@@ -96,11 +171,27 @@ class CampaignController extends Controller
             $campaign->save();
         }
 
+        // Off unless the owner asked for it on this form. Assigned rather than mass-assigned,
+        // like the other settings that sit outside $fillable.
+        if (! empty($validated['desktop_claims_enabled'])) {
+            $campaign->desktop_claims_enabled = true;
+            $campaign->save();
+        }
+
         if ($campaign->id) {
             CreateCampaignBucket::dispatch($campaign->id);
         }
 
         return to_route('campaigns.show', $campaign->id);
+    }
+
+    /**
+     * The last second of a date in UTC, whatever offset the date was written with. The expiry is
+     * derived from it and goes inside the campaign's address, so it has one convention.
+     */
+    private function endOfDay(string $date): CarbonImmutable
+    {
+        return CarbonImmutable::parse($date, 'UTC')->utc()->endOfDay();
     }
 
     /**
@@ -126,16 +217,23 @@ class CampaignController extends Controller
         // most once per request however many props ask for it, and not at all when none
         // of them does.
         $bucket = null;
-        $balance = function () use ($campaign, &$bucket): array {
+        //
+        // Null when the balance could not be read, which the page shows as unavailable rather
+        // than as an empty bucket.
+        $balance = function () use ($campaign, &$bucket): ?array {
             if ($bucket !== null) {
                 return $bucket;
             }
 
             $wallet = $this->walletFor($campaign);
 
-            return $bucket = $wallet
-                ? $wallet->resolveBackend()->getBalance($wallet->address, $campaign->network)
-                : [];
+            try {
+                return $bucket = $wallet
+                    ? $wallet->resolveBackend()->getBalance($wallet->address, $campaign->network)
+                    : [];
+            } catch (FloatUnknown) {
+                return null;
+            }
         };
 
         // Walked once for the two props that need it. A regular closure and a reference,
@@ -332,49 +430,44 @@ class CampaignController extends Controller
      * how many there are without an operator opening every row. The quote comes from the
      * same calculation that validates a new code, so the two cannot disagree.
      *
-     * @return array{below_minimum: int, tight: int}
+     * @return array{below_minimum: int}
      */
     private function attachCodeMinimums(Campaign $campaign, MinUtxoService $minUtxo): array
     {
         $campaign->loadMissing(['codes', 'codes.rewards']);
 
         $belowMinimum = 0;
-        $tight = 0;
 
         foreach ($campaign->codes as $code) {
             $quote = $minUtxo->forCode($code);
             $code->min_utxo = [
                 'min_lovelace' => $quote['min_lovelace'],
-                'recommended_lovelace' => $quote['recommended_lovelace'],
                 'state' => $quote['state'],
                 'warning' => $quote['warning'],
             ];
 
             if (max(0, $code->uses - $code->claims_count) > 0) {
                 $belowMinimum += $quote['state'] === 'below_minimum' ? 1 : 0;
-                $tight += $quote['state'] === 'tight' ? 1 : 0;
             }
         }
 
-        return ['below_minimum' => $belowMinimum, 'tight' => $tight];
+        return ['below_minimum' => $belowMinimum];
     }
 
     /**
-     * The chain's own floor, and how many still-claimable codes sit under or on it.
+     * The chain's own floor, and how many still-claimable codes sit under it.
      *
      * A code below its minimum is not a funding shortfall that more ADA in the bucket
      * would fix: it cannot be paid at any balance, and the operator has to change the
      * code. That is why it is reported separately from the top-up figure.
      *
-     * @param  array{below_minimum: int, tight: int}  $counts
+     * @param  array{below_minimum: int}  $counts
      */
     private function minUtxoPanel(Campaign $campaign, MinUtxoService $minUtxo, array $counts): array
     {
         return [
             'coins_per_utxo_byte' => $minUtxo->coinsPerUtxoByte($campaign->network),
-            'headroom_lovelace' => MinUtxo::headroom(),
             'below_minimum_codes' => $counts['below_minimum'],
-            'tight_codes' => $counts['tight'],
         ];
     }
 
@@ -469,6 +562,8 @@ class CampaignController extends Controller
             // How many codes this campaign may ever hold. Null reads as no limit, the
             // same absence-means-unlimited convention alert_threshold_claims uses.
             'max_codes',
+            // Whether the claim URL serves a claim page to desktop browsers.
+            'desktop_claims_enabled',
         ]);
 
         $campaignData['wallet'] = $wallet === null ? null : [
@@ -506,7 +601,14 @@ class CampaignController extends Controller
             'remaining_claims' => $remainingClaims,
             'reward_lovelace' => (int) $totals['tokens']['lovelace'],
             'network_fee_lovelace' => $remainingClaims * $networkFee,
-            'platform_fee_lovelace' => $inBandFee === null ? null : $remainingClaims * $inBandFee,
+            // A native campaign collects the tiered fee itself, so what is left to pay is the
+            // schedule over the claims still to come, from the count it has already paid. One that
+            // collects nothing has no fee to budget.
+            'platform_fee_lovelace' => $campaign->wallet?->backend === 'native'
+                ? (PlatformFee::collects($campaign)
+                    ? Pricing::marginalTotal(Pricing::pathFor($campaign), (new ChainRetention)->feesState($campaign)['paid'], $remainingClaims)
+                    : null)
+                : ($inBandFee === null ? null : $remainingClaims * $inBandFee),
         ];
     }
 
@@ -793,12 +895,17 @@ class CampaignController extends Controller
      * rather than trusted: anything unreadable means "since now", which reports the runs
      * still going and nothing else. A stamp from the future would hide the completion the
      * client is waiting for, and one from last year would drag the whole history back on
-     * every poll, so both ends are clamped.
+     * every poll, so both ends are clamped. A future stamp is pulled back to a minute ago,
+     * not to now: a client clock a minute fast is the case being covered, and a run that
+     * finished a moment before the poll is older than now. The response's `now` resyncs the
+     * client, so the one poll that overlaps by up to a minute only repeats a run it can
+     * already show.
      */
     private function pollWindow(mixed $since): Carbon
     {
         $now = now();
         $floor = $now->copy()->subDay();
+        $lookBack = $now->copy()->subMinute();
 
         if (! is_string($since) || trim($since) === '') {
             return $now;
@@ -811,7 +918,7 @@ class CampaignController extends Controller
         }
 
         return match (true) {
-            $parsed->gt($now) => $now,
+            $parsed->gt($now) => $lookBack,
             $parsed->lt($floor) => $floor,
             default => $parsed,
         };
@@ -1214,6 +1321,9 @@ class CampaignController extends Controller
             // campaign already holds, refuses only what would be created next, not
             // anything already made.
             'max_codes' => 'nullable|integer|min:1|max:1000000',
+            // Whether the claim URL also serves a claim page to desktop browsers. Editable
+            // at any time: it gates only the browser page, never the wallet endpoint.
+            'desktop_claims_enabled' => 'nullable|boolean',
         ];
 
         $hasClaims = $campaign->claims()->exists();
@@ -1249,9 +1359,37 @@ class CampaignController extends Controller
             $campaign->max_codes = $validated['max_codes'];
         }
 
+        if (array_key_exists('desktop_claims_enabled', $validated)) {
+            $campaign->desktop_claims_enabled = (bool) $validated['desktop_claims_enabled'];
+        }
+
         $campaign->name = strip_tags($validated['name']);
         $campaign->description = strip_tags($validated['description'] ?? $campaign->description);
         $campaign->start_date = $validated['start_date'];
+
+        // A campaign cannot be made to run past the authorisation that pays for it. The branch of
+        // the script that pays a claim stops working at the expiry slot, and that slot is inside
+        // the address, so moving the end date later would leave the campaign accepting claims it
+        // could no longer pay. The window is the settlement grace, which is when payments confirm,
+        // unchecked claims are checked and what is left goes back.
+        if ($campaign->expiry_at) {
+            $latest = CarbonImmutable::parse($campaign->expiry_at)
+                ->subDays(CampaignSlots::GRACE_DAYS);
+
+            if ($this->endOfDay($validated['end_date'])->greaterThan($latest)) {
+                return back()->withErrors([
+                    'end_date' => sprintf(
+                        'This campaign is authorised until %s, and settlement needs the %d days before that, '
+                        .'so it cannot run past %s. That date was fixed when the campaign was created and '
+                        .'cannot be changed.',
+                        CarbonImmutable::parse($campaign->expiry_at)->toFormattedDateString(),
+                        CampaignSlots::GRACE_DAYS,
+                        $latest->toFormattedDateString(),
+                    ),
+                ]);
+            }
+        }
+
         $campaign->end_date = $validated['end_date'];
         $campaign->txn_msg = strip_tags($validated['txn_msg'] ?? $campaign->txn_msg);
         $campaign->nmkr_api_key = $validated['nmkr_api_key'] ?? $campaign->nmkr_api_key;
@@ -1382,11 +1520,24 @@ class CampaignController extends Controller
             'network' => $campaign->network,
         ]);
 
-        $success = $walletBackend->refund(
-            $campaign->wallet->key,
-            $validated['address'],
-            $campaign->network
-        );
+        // A backend that holds the campaign's key answers a refund it cannot make with the reason,
+        // rather than with false: payments still confirming, an authorisation that has lapsed,
+        // or a gate check that failed. The operator is told which, rather than shown an error page.
+        try {
+            $success = $walletBackend->refund(
+                $campaign->wallet->key,
+                $validated['address'],
+                $campaign->network
+            );
+        } catch (\RuntimeException $e) {
+            Log::error('Refund: refused by the backend', [
+                'campaign_id' => $campaign->id,
+                'network' => $campaign->network,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('message', 'The refund was not sent. '.$e->getMessage());
+        }
 
         if ($success) {
             Log::info('Refund: initiated successfully', [

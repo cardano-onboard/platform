@@ -1,6 +1,6 @@
 {
     "name": "cardano-onboard/onboard-ninja",
-    "version": "1.4.0-beta",
+    "version": "2.0.0",
     "type": "project",
     "description": "Cardano token airdrop and claim platform.",
     "keywords": [

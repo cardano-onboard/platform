@@ -22,7 +22,7 @@ class ClaimFactory extends Factory
     public function withTransaction(): static
     {
         return $this->state([
-            'transaction_id' => fake()->uuid(),
+            'transaction_id' => (string) fake()->unique()->numberBetween(100000, 999999999),
             'transaction_hash' => null,
         ]);
     }

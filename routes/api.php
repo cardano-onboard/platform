@@ -23,6 +23,13 @@ Route::middleware('auth:sanctum')
         return $request->user();
     });
 
+// The page a recipient opens in a desktop browser. Same address as the POST below so the
+// page posts to the host it was served from. 'web' brings the Inertia middleware, which
+// the api group lacks.
+Route::get('/claim/v1/{campaign}', [CodeController::class, 'claimPage'])
+    ->middleware(['web', 'throttle:claim-page'])
+    ->name('claim.page');
+
 Route::post('/claim/v1/{campaign}', [
     CodeController::class,
     'claim',
@@ -60,3 +67,7 @@ Route::middleware(['auth:sanctum', 'abilities:'.ApiAbilities::CODES_CREATE, 'thr
 Route::middleware(['auth:sanctum', 'abilities:'.ApiAbilities::CODES_STATUS, 'throttle:code-api-status'])
     ->get('/v1/campaigns/{campaign}/codes/{code}/status', [CodeApiController::class, 'status'])
     ->name('api.codes.status');
+
+Route::middleware(['auth:sanctum', 'abilities:'.ApiAbilities::CODES_STATUS, 'throttle:code-api-status'])
+    ->get('/v1/campaigns/{campaign}', [CodeApiController::class, 'show'])
+    ->name('api.campaigns.show');

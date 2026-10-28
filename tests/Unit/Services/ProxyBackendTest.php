@@ -69,6 +69,15 @@ class ProxyBackendTest extends TestCase
         $this->assertEquals('purchase-abc', $result['purchaseIds']['CODE1']['addr1']);
     }
 
+    public function test_submit_payment_does_not_relay_the_claim_id(): void
+    {
+        Http::fake(['proxy.test/*' => Http::response(['purchaseIds' => []])]);
+
+        $this->backend->submitPayment('camp-123', [['claimId' => 7, 'pooCode' => 'CODE1', 'address' => 'addr1', 'lovelace' => 2000000, 'tokens' => []]], 'preprod');
+
+        Http::assertSent(fn ($request) => $request->data()['recipients'] === [['pooCode' => 'CODE1', 'address' => 'addr1', 'lovelace' => 2000000, 'tokens' => []]]);
+    }
+
     public function test_submit_payment_omits_txn_msg_when_null(): void
     {
         Http::fake([

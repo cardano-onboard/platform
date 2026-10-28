@@ -1,116 +1,54 @@
 name: CI
 
-# Merge gate. Runs the full suite (style, unit/feature, frontend, the transaction
-# package on its own, and the Dusk browser + CSP gate) on every pull request,
-# whatever branch it targets, so work merged into an intermediate branch is
-# proved before it reaches a deploy branch. Mark the lint / test / package / dusk / docker jobs as
-# required status checks in branch protection so a PR can only merge once they are
-# green. The deploy workflows (staging.yaml, production.yaml) intentionally do NOT
-# re-run these — they trust this gate.
+# Merge gate. Runs on pull requests into main
+# (style, unit/feature and frontend tests, and the Dusk browser + CSP gate, all in one
+# job), and on demand from the Actions tab.
+#
+# GitHub bills every job rounded up to a whole minute, and each job pays again for its
+# own runner start, checkout, Composer install and npm install, so the whole gate is a
+# single job. Everything after the first failing step is skipped to stop the clock, apart
+# from the three test steps that follow Pint, which still run so one run reports every
+# failing suite.
+#
+# Draft pull requests are skipped: work accumulates on draft and feature branches on
+# the strength of local test runs, and CI has to go green before a PR is promoted to
+# main. Marking a draft ready for review starts the run. A newer push to the same
+# pull request cancels the run still in progress for it.
+#
+# The Docker build only runs for the release pull request into main, and on manual
+# runs, and for the release only when the Dockerfile, docker/, .dockerignore, Composer
+# files or npm files changed. The test job runs for every ready pull request into main.
 on:
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Code Style
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.3
-          tools: composer:v2
-          coverage: none
-      - name: Install Composer Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-      - name: Check Code Style
-        run: vendor/bin/pint --test
-
   test:
     name: Tests
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    # Run the PHP suite against MySQL (not SQLite) so strict mode — ONLY_FULL_GROUP_BY et
-    # al., matching the MySQL production DB — is exercised in CI. SQLite silently
+    outputs:
+      docker: ${{ steps.docker-inputs.outputs.changed }}
+    # Run the PHP suite against MySQL (not SQLite) so strict mode, ONLY_FULL_GROUP_BY et
+    # al., matching the MySQL production DB, is exercised in CI. SQLite silently
     # accepts MySQL-invalid SQL (e.g. aggregate + $withCount without GROUP BY), letting
     # prod-only 500s slip through; running the real engine catches them here.
+    #
+    # One MySQL serves both phases. The service creates onboard_test for the PHP suite and
+    # the "Wait for MySQL" step adds onboard_dusk for the browser tests. The Chrome service
+    # idles during the PHP suite and is there for the Dusk steps at the end.
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: onboard_test
-          MYSQL_USER: onboard
-          MYSQL_PASSWORD: onboard
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.3
-          extensions: pdo_mysql, bcmath, gd
-          tools: composer:v2
-          coverage: pcov
-      - name: Install Composer Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-      - name: Install NPM Dependencies
-        run: npm ci
-      - name: Build Frontend Assets
-        run: npm run build
-      - name: Run Frontend Tests
-        run: npm test
-        env:
-          LARAVEL_BYPASS_ENV_CHECK: 1
-      - name: Wait for MySQL
-        # The service `mysqladmin ping` health check can pass against MySQL's transient
-        # init server before the real one accepts queries. Block on an actual SELECT so
-        # the suite never races a not-yet-ready DB (which fails ~dozens of tests at once).
-        run: |
-          for i in $(seq 1 30); do
-            if mysql -h127.0.0.1 -P3306 -uonboard -ponboard -e "SELECT 1" onboard_test >/dev/null 2>&1; then
-              echo "MySQL is query-ready"; exit 0
-            fi
-            sleep 2
-          done
-          echo "MySQL did not become query-ready in time" >&2; exit 1
-      - name: Run Tests with Coverage
-        run: php artisan test -c phpunit.mysql.xml --coverage --min=50 --coverage-clover build/coverage/clover.xml
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: onboard_test
-          DB_USERNAME: onboard
-          DB_PASSWORD: onboard
-      - name: Upload Coverage Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: php-coverage
-          path: build/coverage/
-
-  dusk:
-    name: Browser (Dusk)
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: onboard_dusk
           MYSQL_USER: onboard
           MYSQL_PASSWORD: onboard
         ports:
@@ -133,25 +71,104 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Two commits, so a pull request's merge commit can be compared with its base.
+          fetch-depth: 2
+      - name: Find Docker Build Inputs
+        id: docker-inputs
+        # Decides whether the Docker Build job is worth a runner. The image only depends on
+        # these files, so a release that touches none of them cannot break the build.
+        # Manual runs always build.
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only HEAD^1 HEAD | grep -qE '^(Dockerfile|docker/|\.dockerignore$|composer\.(json|lock)$|package(-lock)?\.json$)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
           extensions: sqlite3, pdo_mysql, bcmath, gd
           tools: composer:v2
-          coverage: none
+          coverage: pcov
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
       - name: Install Composer Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Check Code Style
+        id: pint
+        run: vendor/bin/pint --test
       - name: Setup Node.js
+        if: success() || steps.pint.outcome == 'failure'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
       - name: Install NPM Dependencies
+        if: success() || steps.pint.outcome == 'failure'
         run: npm ci
+      # No asset build before the PHP tests: they render pages with the Vite tags stubbed
+      # out. The build comes after them, for the Dusk steps.
+      - name: Run Frontend Tests
+        id: vitest
+        if: success() || steps.pint.outcome == 'failure'
+        # The Vite asset base guard needs a build, so it runs after the build below.
+        run: npx vitest run --exclude tests/js/viteBase.test.js
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
+      - name: Wait for MySQL
+        if: success() || steps.pint.outcome == 'failure'
+        # The service `mysqladmin ping` health check can pass against MySQL's transient
+        # init server before the real one accepts queries. Block on an actual SELECT so
+        # the suite never races a not-yet-ready DB (which fails ~dozens of tests at once).
+        # Then create the Dusk database and give the test user the same rights on it.
+        run: |
+          for i in $(seq 1 30); do
+            if mysql -h127.0.0.1 -P3306 -uonboard -ponboard -e "SELECT 1" onboard_test >/dev/null 2>&1; then
+              echo "MySQL is query-ready"
+              mysql -h127.0.0.1 -P3306 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS onboard_dusk; GRANT ALL ON onboard_dusk.* TO 'onboard'@'%';"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MySQL did not become query-ready in time" >&2; exit 1
+      - name: Create an empty .env
+        if: success() || steps.pint.outcome == 'failure'
+        # The suite takes its settings from phpunit.xml. Without a .env file the dotenv
+        # loader fails to open one, and the runner reports that as a warning on every
+        # test, which buries any real warning. An empty file leaves the settings alone.
+        run: touch .env
+      - name: Run Tests with Coverage
+        id: phpunit-coverage
+        if: success() || steps.pint.outcome == 'failure'
+        run: php artisan test -c phpunit.mysql.xml --coverage --min=50
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: onboard_test
+          DB_USERNAME: onboard
+          DB_PASSWORD: onboard
+      # The browser steps below run only when everything above passed: a failed run stops
+      # here instead of paying for the build and the browser session on top.
       - name: Build Frontend Assets
         run: npm run build
+      - name: Check Vite Asset Base
+        # The PHP tests build no assets, so the guard on the built bundle runs here.
+        run: npx vitest run tests/js/viteBase.test.js
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
       - name: Prepare Dusk Environment
+        id: dusk-env
         run: |
           cp .env.dusk.ci .env
           # Delete .env.testing so artisan serve's persistent PHP process
@@ -189,26 +206,26 @@ jobs:
         env:
           DUSK_DRIVER_URL: http://localhost:9515
       - name: Dump Laravel & Serve Logs
-        if: failure()
+        if: failure() && steps.dusk-env.outcome != 'skipped'
         run: |
           echo "===== storage/logs/laravel.log ====="
           [ -f storage/logs/laravel.log ] && cat storage/logs/laravel.log || echo "(no laravel.log)"
           echo "===== storage/logs/serve.log ====="
           [ -f storage/logs/serve.log ] && cat storage/logs/serve.log || echo "(no serve.log)"
       - name: Upload Dusk Screenshots
-        if: failure()
+        if: failure() && steps.dusk-env.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: dusk-screenshots
           path: tests/Browser/screenshots/
       - name: Upload Dusk Console Logs
-        if: failure()
+        if: failure() && steps.dusk-env.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: dusk-console
           path: tests/Browser/console/
       - name: Upload Laravel Logs
-        if: failure()
+        if: failure() && steps.dusk-env.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: laravel-logs
@@ -217,9 +234,28 @@ jobs:
 
   docker:
     name: Docker Build
+    # Runs after the tests, and only for the release pull request into main (or a manual
+    # run) when the Dockerfile, docker/, .dockerignore, composer.json, composer.lock,
+    # package.json or package-lock.json changed. A skipped job is not billed and counts as
+    # passing for anything reading the pull request's checks.
+    needs: test
+    if: needs.test.result == 'success' && needs.test.outputs.docker == 'true' && (github.event_name == 'workflow_dispatch' || github.base_ref == 'main')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Build Docker Image
-        run: docker build -t onboard-ninja:ci-test .
+        # The layer that installs system packages and PHP extensions never changes
+        # between runs, so it is cached between them. Only the final image's layers are
+        # stored (mode=min), which keeps this cache small enough not to push the Composer
+        # and npm caches out of the repository's cache allowance. A pull request's cache
+        # is shared with later runs of that same pull request.
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: onboard-ninja:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=min

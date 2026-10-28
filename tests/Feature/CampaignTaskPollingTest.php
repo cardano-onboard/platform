@@ -161,6 +161,10 @@ class CampaignTaskPollingTest extends TestCase
 
         $task = CampaignTask::factory()->for($campaign)->complete()->create();
 
+        // The run finished a few seconds before the poll arrives. A future stamp must still
+        // reach back that far, whatever second the clock is on.
+        $this->travel(5)->seconds();
+
         $this->actingAs($user)
             ->getJson(route('campaigns.tasks', $campaign).'?since='.urlencode(now()->addYear()->toIso8601String()))
             ->assertOk()

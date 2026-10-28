@@ -46,6 +46,7 @@ class Claim extends Model
         'revenue_usd' => 'decimal:6',
         'reward_lovelace' => 'integer',
         'reward_tokens' => 'array',
+        'retry_after' => 'datetime',
     ];
 
     /**
@@ -86,6 +87,98 @@ class Claim extends Model
         return $query->whereNotNull('claims.transaction_id')
             ->whereNull('claims.transaction_hash')
             ->whereNotIn('claims.status', ['failed', 'completed']);
+    }
+
+    /**
+     * Claims that have not been handed to the transaction backend and should be.
+     *
+     * Held claims are left out, because sending one would deliver a reward the campaign has
+     * not paid for. Failed and completed claims are left out, because neither is waiting
+     * to be sent whatever its transaction id says.
+     */
+    public function scopeAwaitingSubmission(Builder $query): Builder
+    {
+        return $query->whereNull('claims.transaction_id')
+            ->whereNull('claims.held_reason')
+            ->whereNotIn('claims.status', ['failed', 'completed']);
+    }
+
+    /**
+     * Claims awaiting submission whose retry backoff, if they have one, has run out.
+     */
+    public function scopeDueForSubmission(Builder $query): Builder
+    {
+        return $query->awaitingSubmission()
+            ->where(fn (Builder $query) => $query->whereNull('claims.retry_after')
+                ->orWhere('claims.retry_after', '<=', now()));
+    }
+
+    /**
+     * The same test as scopeAwaitingConfirmation, for a claim already loaded. Kept near it
+     * so the two are read, and changed, together.
+     */
+    public function isAwaitingConfirmation(): bool
+    {
+        return $this->transaction_id !== null
+            && $this->transaction_hash === null
+            && ! in_array($this->status, ['failed', 'completed'], true);
+    }
+
+    /**
+     * Claims whose transaction hash is a real one: present, not empty, and not the stand-in
+     * the null backend writes. A real hash is only ever written from the backend's completed
+     * answer or the chain, so a claim with one has been paid.
+     */
+    public function scopeHasRealTransactionHash(Builder $query): Builder
+    {
+        return $query->whereNotNull('claims.transaction_hash')
+            ->where('claims.transaction_hash', '!=', '')
+            ->where('claims.transaction_hash', 'not like', 'null-tx-%');
+    }
+
+    /**
+     * The claims scopeHasRealTransactionHash leaves out.
+     */
+    public function scopeLacksRealTransactionHash(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $query) => $query
+            ->whereNull('claims.transaction_hash')
+            ->orWhere('claims.transaction_hash', '')
+            ->orWhere('claims.transaction_hash', 'like', 'null-tx-%'));
+    }
+
+    /**
+     * Records that the transaction backend confirmed this claim's transaction: the hash and
+     * the completed status together, so a claim never holds one without the other. Every
+     * place a hash is learned goes through here, because a claim with a hash leaves
+     * awaitingConfirmation() and nothing revisits it to fix a status left behind.
+     *
+     * A blank hash is refused and nothing is written. The backend's completed answer that
+     * carries no hash goes through markCompletedWithoutHash() instead.
+     */
+    public function markConfirmed(?string $transactionHash): bool
+    {
+        if ($transactionHash === null || trim($transactionHash) === '') {
+            return false;
+        }
+
+        $this->transaction_hash = $transactionHash;
+        $this->status = 'completed';
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Records a completed answer from the backend that carried no transaction hash. The
+     * transaction was paid, so the claim is final: left waiting, a later timeout answer would
+     * clear its transaction id and send the reward again. The hash stays null, and the
+     * caller says so in the log.
+     */
+    public function markCompletedWithoutHash(): void
+    {
+        $this->status = 'completed';
+        $this->save();
     }
 
     public function code(): BelongsTo

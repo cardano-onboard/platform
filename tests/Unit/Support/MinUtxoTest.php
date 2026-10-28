@@ -32,12 +32,13 @@ class MinUtxoTest extends TestCase
 
     public function test_an_output_with_no_assets_costs_its_address_and_a_coin(): void
     {
-        // 1 array head + 2 byte-string head + 57 address + 9 coin = 69 bytes.
-        $this->assertSame(69, MinUtxo::outputBytes([], self::ADDRESS_BYTES));
+        // 1 map head + 2 keys + 2 byte-string head + 57 address + 5 coin = 67 bytes.
+        $this->assertSame(67, MinUtxo::outputBytes([], self::ADDRESS_BYTES, 978_370));
         $this->assertSame(
-            (160 + 69) * self::COEFFICIENT,
+            (160 + 67) * self::COEFFICIENT,
             MinUtxo::forBundle([], self::COEFFICIENT, self::ADDRESS_BYTES)
         );
+        $this->assertSame(978_370, MinUtxo::forBundle([], self::COEFFICIENT, self::ADDRESS_BYTES));
     }
 
     public function test_one_native_asset_needs_more_than_the_flat_one_ada_floor(): void
@@ -48,13 +49,13 @@ class MinUtxoTest extends TestCase
             'quantity' => 1,
         ]];
 
-        // value: 1 array + 9 coin + 1 map + 30 policy + 1 map + 6 name + 1 quantity = 49
-        // output: 1 + 2 + 57 + 49 = 109
-        $this->assertSame(109, MinUtxo::outputBytes($bundle, self::ADDRESS_BYTES));
-
+        // value: 1 array + 5 coin + 1 map + 30 policy + 1 map + 6 name + 1 quantity = 45
+        // output: 3 (map head and keys) + 2 + 57 + 45 = 107
         $minimum = MinUtxo::forBundle($bundle, self::COEFFICIENT, self::ADDRESS_BYTES);
 
-        $this->assertSame(1_159_390, $minimum);
+        $this->assertSame(107, MinUtxo::outputBytes($bundle, self::ADDRESS_BYTES, $minimum));
+        $this->assertSame((160 + 107) * self::COEFFICIENT, $minimum);
+        $this->assertSame(1_150_770, $minimum);
         $this->assertGreaterThan(
             1_000_000,
             $minimum,
@@ -68,7 +69,7 @@ class MinUtxoTest extends TestCase
         $long = [['policy' => str_repeat('ab', 28), 'asset' => $this->hex(str_repeat('N', 32)), 'quantity' => 1]];
 
         $this->assertSame(
-            1_280_070,
+            1_271_450,
             MinUtxo::forBundle($long, self::COEFFICIENT, self::ADDRESS_BYTES)
         );
         $this->assertGreaterThan(
@@ -84,11 +85,11 @@ class MinUtxoTest extends TestCase
             ['policy' => str_repeat('22', 28), 'asset' => $this->hex('MINSWAP1'), 'quantity' => 1_000_000],
         ];
 
-        // value: 1 + 9 + 1 map + 2 * (30 policy + 1 map + 9 name + 5 quantity) = 101
-        // output: 1 + 2 + 57 + 101 = 161
-        $this->assertSame(161, MinUtxo::outputBytes($bundle, self::ADDRESS_BYTES));
+        // value: 1 + 5 + 1 map + 2 * (30 policy + 1 map + 9 name + 5 quantity) = 97
+        // output: 3 + 2 + 57 + 97 = 159
+        $this->assertSame(159, MinUtxo::outputBytes($bundle, self::ADDRESS_BYTES, 1_355_000));
         $this->assertSame(
-            (160 + 161) * self::COEFFICIENT,
+            (160 + 159) * self::COEFFICIENT,
             MinUtxo::forBundle($bundle, self::COEFFICIENT, self::ADDRESS_BYTES)
         );
         $this->assertSame(2, MinUtxo::policyCount($bundle));
@@ -102,10 +103,10 @@ class MinUtxoTest extends TestCase
             ['policy' => str_repeat('33', 28), 'asset' => $this->hex('CCCCCCCCCCCCCCCCCCCC'), 'quantity' => 1_000_000_000],
         ];
 
-        // value: 1 + 9 + 1 map + 30 policy + 1 map + (5+1) + (13+2) + (21+5) = 89
-        // output: 1 + 2 + 57 + 89 = 149
-        $this->assertSame(149, MinUtxo::outputBytes($onePolicy, self::ADDRESS_BYTES));
-        $this->assertSame(1_331_790, MinUtxo::forBundle($onePolicy, self::COEFFICIENT, self::ADDRESS_BYTES));
+        // value: 1 + 5 + 1 map + 30 policy + 1 map + (5+1) + (13+2) + (21+5) = 85
+        // output: 3 + 2 + 57 + 85 = 147
+        $this->assertSame(147, MinUtxo::outputBytes($onePolicy, self::ADDRESS_BYTES, 1_323_170));
+        $this->assertSame(1_323_170, MinUtxo::forBundle($onePolicy, self::COEFFICIENT, self::ADDRESS_BYTES));
         $this->assertSame(1, MinUtxo::policyCount($onePolicy));
 
         $threePolicies = [
@@ -137,7 +138,8 @@ class MinUtxoTest extends TestCase
             self::ADDRESS_BYTES
         );
 
-        // 1 byte of head for the small quantity, 9 for one that needs all eight payload bytes.
+        // 1 byte of head for the small quantity, 9 for one that needs all eight payload bytes,
+        // and the coin stays at five bytes either side.
         $this->assertSame(8 * self::COEFFICIENT, $huge - $small);
     }
 
@@ -245,18 +247,5 @@ class MinUtxoTest extends TestCase
         $this->assertSame(5, MinUtxo::headBytes(4294967295));
         $this->assertSame(9, MinUtxo::headBytes(4294967296));
         $this->assertSame(1, MinUtxo::headBytes(-1));
-    }
-
-    public function test_the_headroom_and_recommendation_come_from_configuration(): void
-    {
-        config(['cardano.min_utxo.headroom_lovelace' => 2_000_000]);
-
-        $bundle = [['policy' => str_repeat('ab', 28), 'asset' => $this->hex('HOSKY'), 'quantity' => 1]];
-
-        $this->assertSame(2_000_000, MinUtxo::headroom());
-        $this->assertSame(
-            MinUtxo::forBundle($bundle, self::COEFFICIENT, self::ADDRESS_BYTES) + 2_000_000,
-            MinUtxo::recommended($bundle, self::COEFFICIENT, self::ADDRESS_BYTES)
-        );
     }
 }

@@ -179,7 +179,7 @@ only sanctioned place raw brand hex appears.
 - The brand orange has two "dark" steps by design: `brand.dark`/`brand.600` = `#DC3700`
   (standard pressed/emphasis) and `brand.700` = `#C03A00` (darkest). Pick `600` unless you
   specifically need the darkest step.
-- This guide ships with the public DIY platform repo (via `scripts/publish-platform.sh`),
+- This guide ships with the public DIY platform repo,
   so it doubles as brand guidance for self-hosters and contributors.
 
 ---

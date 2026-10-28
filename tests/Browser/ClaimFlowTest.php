@@ -5,13 +5,13 @@ namespace Tests\Browser;
 use App\Models\Campaign;
 use App\Models\Code;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
 class ClaimFlowTest extends DuskTestCase
 {
-    use DatabaseMigrations;
+    use DatabaseTruncation;
 
     public function test_campaign_shows_codes_table(): void
     {

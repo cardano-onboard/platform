@@ -15,6 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
  * Measures whether a campaign actually onboarded anyone, using the public Koios query
@@ -1149,7 +1150,7 @@ class OnboardingAnalysisService
     private function pace(): void
     {
         if ($this->paced) {
-            usleep(self::PACE_MICROSECONDS);
+            Sleep::usleep(self::PACE_MICROSECONDS);
         }
     }
 }

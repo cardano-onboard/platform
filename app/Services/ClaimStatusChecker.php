@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Cardano\ChainConfirmation;
 use App\Contracts\ReportsTaskProgress;
 use App\Jobs\ProcessClaims;
 use App\Models\Campaign;
 use App\Models\Claim;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Asks the transaction backend what happened to every claim still waiting on an answer,
@@ -39,9 +42,13 @@ class ClaimStatusChecker
      *                            come round again.
      * @param  ReportsTaskProgress|null  $progress  where to say how many claims have been
      *                                              asked about, for a run somebody is watching
-     * @return array{checked: int, completed: int, timeout: int, retried: int, failed: int, processing: int, unknown: int, skipped: bool}
+     * @param  int|null  $limit  the most claims to ask about, oldest first. The backend is
+     *                           asked one claim at a time, so an unwatched pass is bounded
+     *                           with this. Null asks about every one, which the analysis
+     *                           and the Check claims button need.
+     * @return array{checked: int, completed: int, timeout: int, retried: int, failed: int, processing: int, unknown: int, skipped: bool, unreachable: bool}
      */
-    public function check(Campaign $campaign, int $waitSeconds = 0, ?ReportsTaskProgress $progress = null): array
+    public function check(Campaign $campaign, int $waitSeconds = 0, ?ReportsTaskProgress $progress = null, ?int $limit = null): array
     {
         $stats = [
             'checked' => 0,
@@ -52,6 +59,7 @@ class ClaimStatusChecker
             'processing' => 0,
             'unknown' => 0,
             'skipped' => false,
+            'unreachable' => false,
         ];
 
         $lock = Cache::lock('claim-status-check:'.$campaign->id, self::LOCK_SECONDS);
@@ -71,7 +79,7 @@ class ClaimStatusChecker
         }
 
         try {
-            return $this->pass($campaign, $stats, $progress);
+            return $this->pass($campaign, $stats, $progress, $limit);
         } finally {
             $lock->release();
         }
@@ -81,16 +89,38 @@ class ClaimStatusChecker
      * @param  array<string, mixed>  $stats
      * @return array<string, mixed>
      */
-    private function pass(Campaign $campaign, array $stats, ?ReportsTaskProgress $progress = null): array
+    private function pass(Campaign $campaign, array $stats, ?ReportsTaskProgress $progress = null, ?int $limit = null): array
     {
+        // A native campaign's own transactions are settled against the chain first, once for the
+        // whole campaign, so every caller of this check (status polls, the post-submission chain,
+        // the page button, the onboarding analysis) reads a record that already knows what landed.
+        // Nothing else has to run on a schedule for this to happen. A chain that cannot be read leaves the record
+        // as it was, and the status answers follow it.
+        if ($campaign->wallet?->backend === 'native') {
+            try {
+                app(ChainConfirmation::class)->reconcile($campaign, $campaign->network);
+            } catch (Throwable $e) {
+                Log::warning('Claim status check: the chain could not be reconciled, so claims are checked as recorded.', [
+                    'campaign_id' => $campaign->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Oldest first, so a bounded pass always reaches the claims that have waited
+        // longest, and a claim is never passed over in favour of newer ones.
         $claims = $campaign->claims()
             ->awaitingConfirmation()
             ->with(['code.rewards'])
+            ->orderBy('claims.created_at')
+            ->orderBy('claims.id')
+            ->when($limit !== null, fn ($query) => $query->limit(max(1, $limit)))
             ->get();
 
         Log::info('Claim status check: pending claims found', [
             'campaign_id' => $campaign->id,
             'pending_count' => $claims->count(),
+            'limit' => $limit,
         ]);
 
         if ($claims->isEmpty()) {
@@ -114,7 +144,24 @@ class ClaimStatusChecker
         $progress?->progress(0, $total);
 
         foreach ($claims as $claim) {
-            $result = $backend->checkStatus($claim->transaction_id, $campaign->network);
+            try {
+                $result = $backend->checkStatus($claim->transaction_id, $campaign->network);
+            } catch (ConnectionException $e) {
+                // The backend could not be reached, or did not answer in time. Every claim
+                // left is still waiting and nothing about it has changed, so the pass ends
+                // here rather than failing the job, and the next check asks again.
+                $stats['unreachable'] = true;
+
+                Log::warning('Claim status check: backend unreachable, pass ended early.', [
+                    'campaign_id' => $campaign->id,
+                    'claim_id' => $claim->id,
+                    'checked' => $stats['checked'],
+                    'error' => $e->getMessage(),
+                ]);
+
+                break;
+            }
+
             $stats['checked']++;
             $progress?->progress($stats['checked'], $total);
 
@@ -128,9 +175,17 @@ class ClaimStatusChecker
 
             switch ($result['status'] ?? null) {
                 case 'completed':
-                    $claim->transaction_hash = $result['txHash'];
-                    $claim->status = 'completed';
-                    $claim->save();
+                    if (! $claim->markConfirmed($result['txHash'] ?? null)) {
+                        // Paid, but the backend gave no hash. The claim is still final: left
+                        // waiting, a later timeout answer would send the reward again.
+                        $claim->markCompletedWithoutHash();
+                        Log::warning('Claim status check: backend reported completed without a transaction hash', [
+                            'campaign_id' => $campaign->id,
+                            'claim_id' => $claim->id,
+                            'result' => $result,
+                        ]);
+                    }
+
                     $stats['completed']++;
                     break;
 
@@ -190,8 +245,14 @@ class ClaimStatusChecker
             return;
         }
 
+        // Sent again only after a backoff that doubles with each timeout, so a transaction
+        // that keeps timing out is not resent at the pace claims arrive. The time is kept on
+        // the claim, so a send run that other claims bring round sooner leaves it alone.
+        $wait = self::retryBackoffSeconds($claim->retry_count);
+
         $claim->transaction_id = null;
         $claim->status = 'pending';
+        $claim->retry_after = now()->addSeconds($wait);
         $claim->save();
         $stats['retried']++;
 
@@ -199,9 +260,21 @@ class ClaimStatusChecker
             'campaign_id' => $campaign->id,
             'claim_id' => $claim->id,
             'retry_count' => $claim->retry_count,
+            'retry_after' => $claim->retry_after->toIso8601String(),
         ]);
 
         ProcessClaims::dispatch($campaign->id)
-            ->delay((int) config('cardano.push_delay', 5) * 60);
+            ->delay(min(ProcessClaims::MAX_DELAY_SECONDS, $wait));
+    }
+
+    /**
+     * Seconds a claim waits before it is sent again after its nth timeout: the configured
+     * base, doubled for each timeout before this one.
+     */
+    public static function retryBackoffSeconds(int $retryCount): int
+    {
+        $base = max(1, (int) config('cardano.claim_retry_backoff_base_seconds', 60));
+
+        return $base * 2 ** max(0, $retryCount - 1);
     }
 }

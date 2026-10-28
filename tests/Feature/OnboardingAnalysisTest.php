@@ -539,7 +539,7 @@ class OnboardingAnalysisTest extends TestCase
             route('campaigns.show', $campaign).'?onboarding_from=2026-09-01&onboarding_to=2026-09-01',
             [
                 'X-Inertia' => 'true',
-                'X-Inertia-Version' => $version,
+                'X-Inertia-Version' => (string) $version,
                 'X-Inertia-Partial-Component' => 'Campaign/Show',
                 'X-Inertia-Partial-Data' => 'onboarding',
             ]

@@ -14,11 +14,10 @@ use Tests\TestCase;
  * What the chain will accept, applied where a code is created and where a campaign is
  * looked at.
  *
- * The floor and the warning are two different things and the tests keep them apart. A
- * reward under the chain's own minimum is refused, because it is a payment that could be
- * created, printed on a sticker, scanned at a booth and never sent. A reward that clears
- * the minimum with nothing to spare is allowed and said out loud, because an operator is
- * entitled to hand out exactly what they meant to hand out.
+ * A code is stored at the higher of the amount entered and the exact minimum for its
+ * assets. A reward under the minimum is raised to it rather than refused, because it would
+ * otherwise be a payment that could be created, printed on a sticker, scanned at a booth
+ * and never sent. A reward at or above the minimum is stored exactly as entered.
  */
 class MinUtxoCodeTest extends TestCase
 {
@@ -30,7 +29,7 @@ class MinUtxoCodeTest extends TestCase
     private const ASSET = '484f534b59'; // HOSKY
 
     /** What one HOSKY in an output actually costs at mainnet's 4310 coins per byte. */
-    private const ONE_ASSET_MINIMUM = 1_159_390;
+    private const ONE_ASSET_MINIMUM = 1_150_770;
 
     private User $user;
 
@@ -60,50 +59,55 @@ class MinUtxoCodeTest extends TestCase
         ], $overrides));
     }
 
-    public function test_a_token_bearing_code_below_the_chain_minimum_is_refused(): void
+    public function test_one_ada_with_a_native_asset_is_stored_at_exactly_the_minimum(): void
     {
         $this->create(['lovelace' => 1_000_000])
-            ->assertSessionHasErrors('lovelace');
+            ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('codes', 0);
-        $this->assertDatabaseCount('rewards', 0);
+        $this->assertDatabaseCount('codes', 1);
+        $this->assertDatabaseCount('rewards', 1);
+        $this->assertSame(self::ONE_ASSET_MINIMUM, (int) Code::query()->first()->lovelace);
     }
 
-    public function test_the_refusal_says_what_the_minimum_actually_is(): void
+    public function test_ten_ada_with_native_assets_stays_ten_ada(): void
     {
-        $response = $this->create(['lovelace' => 1_000_000]);
+        $this->create(['lovelace' => 10_000_000])
+            ->assertSessionHasNoErrors()
+            ->assertSessionMissing('message');
 
-        $errors = session('errors')->get('lovelace');
-
-        $this->assertStringContainsString('1.15939', $errors[0]);
-        $this->assertStringContainsString('1 asset', $errors[0]);
+        $this->assertSame(10_000_000, (int) Code::query()->first()->lovelace);
     }
 
-    public function test_one_lovelace_under_the_minimum_is_still_under_it(): void
+    public function test_raising_a_reward_tells_the_operator_what_it_became(): void
     {
-        $this->create(['lovelace' => self::ONE_ASSET_MINIMUM - 1])
-            ->assertSessionHasErrors('lovelace');
+        $this->create(['lovelace' => 1_000_000]);
 
-        $this->assertDatabaseCount('codes', 0);
+        $this->assertStringContainsString('raised from 1 ADA to 1.15077 ADA', session('message'));
     }
 
-    public function test_a_code_exactly_on_the_minimum_is_created_and_warned_about(): void
+    public function test_one_lovelace_under_the_minimum_is_raised_by_that_lovelace(): void
+    {
+        $this->create(['lovelace' => self::ONE_ASSET_MINIMUM - 1]);
+
+        $this->assertSame(self::ONE_ASSET_MINIMUM, (int) Code::query()->first()->lovelace);
+    }
+
+    public function test_a_code_exactly_on_the_minimum_is_stored_as_entered_without_a_message(): void
     {
         $this->create(['lovelace' => self::ONE_ASSET_MINIMUM])
             ->assertSessionHasNoErrors()
-            ->assertSessionHas('message');
+            ->assertSessionMissing('message');
 
-        $this->assertDatabaseCount('codes', 1);
-        $this->assertStringContainsString('of room', session('message'));
+        $this->assertSame(self::ONE_ASSET_MINIMUM, (int) Code::query()->first()->lovelace);
     }
 
-    public function test_a_code_with_room_to_spare_is_created_without_a_warning(): void
+    public function test_a_code_a_little_above_the_minimum_gets_no_headroom_added_or_removed(): void
     {
         $this->create(['lovelace' => self::ONE_ASSET_MINIMUM + 1_000_000])
             ->assertSessionHasNoErrors()
             ->assertSessionMissing('message');
 
-        $this->assertDatabaseCount('codes', 1);
+        $this->assertSame(self::ONE_ASSET_MINIMUM + 1_000_000, (int) Code::query()->first()->lovelace);
     }
 
     /**
@@ -122,7 +126,7 @@ class MinUtxoCodeTest extends TestCase
         $this->assertDatabaseCount('codes', 1);
     }
 
-    public function test_more_policies_raise_the_floor_further(): void
+    public function test_more_policies_raise_the_stored_amount_further(): void
     {
         $twoPolicies = [
             ['policy_id' => self::POLICY, 'token_id' => self::ASSET, 'quantity' => 1],
@@ -131,15 +135,15 @@ class MinUtxoCodeTest extends TestCase
 
         // Enough for one asset, not enough for two under separate policies.
         $this->create(['lovelace' => self::ONE_ASSET_MINIMUM, 'tokens' => $twoPolicies])
-            ->assertSessionHasErrors('lovelace');
+            ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('codes', 0);
+        $this->assertGreaterThan(self::ONE_ASSET_MINIMUM, (int) Code::query()->first()->lovelace);
     }
 
     /**
      * The other half of the same rule. Three assets under one policy pay for one policy id,
-     * so a bundle that is refused when spread across three policies is accepted when it is
-     * not, at the same amount.
+     * so a bundle that is raised when spread across three policies is stored as entered when
+     * it is not, at the same amount.
      */
     public function test_assets_sharing_a_policy_cost_less_than_assets_that_do_not(): void
     {
@@ -157,12 +161,15 @@ class MinUtxoCodeTest extends TestCase
         $amount = 1_400_000;
 
         $this->create(['lovelace' => $amount, 'tokens' => $shared])->assertSessionHasNoErrors();
-        $this->create(['lovelace' => $amount, 'tokens' => $spread])->assertSessionHasErrors('lovelace');
+        $this->create(['lovelace' => $amount, 'tokens' => $spread])->assertSessionHasNoErrors();
 
-        $this->assertDatabaseCount('codes', 1);
+        $amounts = Code::query()->orderBy('created_at')->get()->map(fn ($code) => (int) $code->lovelace);
+        $this->assertContains($amount, $amounts->all());
+        $this->assertSame(1, $amounts->filter(fn ($value) => $value === $amount)->count());
+        $this->assertSame(1, $amounts->filter(fn ($value) => $value > $amount)->count());
     }
 
-    public function test_a_longer_asset_name_raises_the_floor(): void
+    public function test_a_longer_asset_name_raises_the_stored_amount(): void
     {
         $long = [[
             'policy_id' => self::POLICY,
@@ -171,7 +178,9 @@ class MinUtxoCodeTest extends TestCase
         ]];
 
         $this->create(['lovelace' => self::ONE_ASSET_MINIMUM, 'tokens' => $long])
-            ->assertSessionHasErrors('lovelace');
+            ->assertSessionHasNoErrors();
+
+        $this->assertGreaterThan(self::ONE_ASSET_MINIMUM, (int) Code::query()->first()->lovelace);
     }
 
     public function test_every_code_in_a_batch_carries_the_same_checked_amount(): void
@@ -197,7 +206,6 @@ class MinUtxoCodeTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('min_lovelace', self::ONE_ASSET_MINIMUM)
-            ->assertJsonPath('recommended_lovelace', self::ONE_ASSET_MINIMUM + 1_000_000)
             ->assertJsonPath('asset_count', 1)
             ->assertJsonPath('policy_count', 1)
             ->assertJsonPath('state', 'below_minimum');
@@ -210,7 +218,7 @@ class MinUtxoCodeTest extends TestCase
         $this->actingAs($this->user)
             ->postJson(route('campaigns.min-utxo', $this->campaign->id), ['tokens' => []])
             ->assertOk()
-            ->assertJsonPath('min_lovelace', 986_990)
+            ->assertJsonPath('min_lovelace', 978_370)
             ->assertJsonPath('asset_count', 0);
     }
 
@@ -240,7 +248,7 @@ class MinUtxoCodeTest extends TestCase
 
     public function test_the_campaign_page_counts_codes_that_can_never_be_paid(): void
     {
-        // Written straight to the database, because the form now refuses to create one.
+        // Written straight to the database, because the form now raises it instead.
         // Codes made before this rule existed are exactly the ones an operator has to find.
         $bad = Code::factory()->for($this->campaign)->create(['lovelace' => 1_000_000, 'uses' => 5]);
         Reward::factory()->for($bad)->create([
@@ -254,21 +262,19 @@ class MinUtxoCodeTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('min_utxo.below_minimum_codes', 1)
-                ->where('min_utxo.tight_codes', 0)
                 ->where('min_utxo.coins_per_utxo_byte', 4310)
-                ->where('min_utxo.headroom_lovelace', 1_000_000)
                 ->where('campaign.codes.0.min_utxo.state', 'below_minimum')
                 ->where('campaign.codes.0.min_utxo.min_lovelace', self::ONE_ASSET_MINIMUM)
             );
     }
 
-    public function test_the_campaign_page_counts_codes_that_leave_nothing_to_spend(): void
+    public function test_a_code_on_its_minimum_is_not_flagged_at_all(): void
     {
-        $tight = Code::factory()->for($this->campaign)->create([
+        $exact = Code::factory()->for($this->campaign)->create([
             'lovelace' => self::ONE_ASSET_MINIMUM,
             'uses' => 5,
         ]);
-        Reward::factory()->for($tight)->create([
+        Reward::factory()->for($exact)->create([
             'policy_hex' => self::POLICY,
             'asset_hex' => self::ASSET,
             'quantity' => 1,
@@ -279,7 +285,9 @@ class MinUtxoCodeTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('min_utxo.below_minimum_codes', 0)
-                ->where('min_utxo.tight_codes', 1)
+                ->where('campaign.codes.0.min_utxo.state', 'ok')
+                ->missing('min_utxo.tight_codes')
+                ->missing('min_utxo.headroom_lovelace')
             );
     }
 
@@ -309,7 +317,7 @@ class MinUtxoCodeTest extends TestCase
             );
     }
 
-    public function test_an_ada_only_code_is_neither_unpayable_nor_tight(): void
+    public function test_an_ada_only_code_is_not_unpayable(): void
     {
         Code::factory()->for($this->campaign)->create(['lovelace' => 2_000_000, 'uses' => 5]);
 
@@ -318,7 +326,6 @@ class MinUtxoCodeTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('min_utxo.below_minimum_codes', 0)
-                ->where('min_utxo.tight_codes', 0)
             );
     }
 }
