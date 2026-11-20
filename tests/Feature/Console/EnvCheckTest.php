@@ -46,6 +46,7 @@ class EnvCheckTest extends TestCase
             'admin.password' => 'SENTINEL-ADMIN-PW',
             'sanctum.stateful' => ['app.example.test'],
             'security.csp_override' => '',
+            'security.trusted_proxies' => $profile === 'self-hosted' ? '' : '*',
             'database.default' => 'mysql',
             'database.connections.mysql.host' => 'db.example.test',
             'database.connections.mysql.password' => 'SENTINEL-DB-PW',
@@ -111,6 +112,36 @@ class EnvCheckTest extends TestCase
         }
     }
 
+    public function test_a_blank_trusted_proxies_is_fine_on_a_self_hosted_install_and_a_list_is_fine_anywhere(): void
+    {
+        $this->ready('self-hosted');
+        config(['security.trusted_proxies' => '']);
+        $this->assertFinding($this->findings('self-hosted'), 'TRUSTED_PROXIES', 'ok');
+
+        $this->ready('production');
+        config(['security.trusted_proxies' => '203.0.113.0/24, 2001:db8::/32']);
+        $this->assertFinding($this->findings('production'), 'TRUSTED_PROXIES', 'ok');
+    }
+
+    public function test_the_trusted_proxies_messages_say_what_is_trusted_and_use_the_right_grammar(): void
+    {
+        $this->ready('production');
+
+        config(['security.trusted_proxies' => 'nginx']);
+        $message = collect((new EnvReadiness('production', fn () => null))->run())->firstWhere('name', 'TRUSTED_PROXIES')['reason'];
+        $this->assertStringContainsString('1 entry is not', $message);
+        $this->assertStringContainsString('no address is trusted', $message);
+        $this->assertStringNotContainsString('nginx', $message);
+
+        config(['security.trusted_proxies' => 'nginx, mail']);
+        $message = collect((new EnvReadiness('production', fn () => null))->run())->firstWhere('name', 'TRUSTED_PROXIES')['reason'];
+        $this->assertStringContainsString('2 entries are not', $message);
+
+        config(['security.trusted_proxies' => '']);
+        $message = collect((new EnvReadiness('production', fn () => null))->run())->firstWhere('name', 'TRUSTED_PROXIES')['reason'];
+        $this->assertStringContainsString('or * where nothing but the ingress can reach the app', $message);
+    }
+
     public static function profiles(): array
     {
         return [['production'], ['staging'], ['self-hosted']];
@@ -150,6 +181,18 @@ class EnvCheckTest extends TestCase
             ['staging', ['admin.password' => 'password'], [], 'ADMIN_PASSWORD', 'warning'],
             ['production', ['sanctum.stateful' => ['localhost']], [], 'SANCTUM_STATEFUL_DOMAINS', 'warning'],
             ['production', ['security.csp_override' => "default-src 'self'"], [], 'CONTENT_SECURITY_POLICY', 'warning'],
+            ['production', ['security.trusted_proxies' => ''], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['staging', ['security.trusted_proxies' => '  '], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['staging', ['security.trusted_proxies' => ','], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['production', ['security.trusted_proxies' => 'ingress.internal'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '10.0.0.0/33'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '*, 192.0.2.1'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => 'REMOTE_ADDR'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '0.0.0.0/0'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '::/0'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '10.0.0.0/00'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '10.0.0.0/032'], [], 'TRUSTED_PROXIES', 'wrong'],
+            ['self-hosted', ['security.trusted_proxies' => '::ffff:10.0.0.5/32'], [], 'TRUSTED_PROXIES', 'wrong'],
             // database, queue, stores
             ['production', ['database.default' => 'sqlite'], [], 'DB_CONNECTION', 'wrong'],
             ['production', ['database.connections.mysql.host' => '127.0.0.1'], [], 'DB_HOST', 'warning'],

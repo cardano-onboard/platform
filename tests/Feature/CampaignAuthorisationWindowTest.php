@@ -80,6 +80,9 @@ class CampaignAuthorisationWindowTest extends TestCase
 
     private function attemptCampaign(string $endDate, string $network = 'preprod')
     {
+        // Each attempt is a different account, so start from an empty session.
+        $this->flushSession();
+
         return $this->actingAs(User::factory()->create())
             ->post(route('campaigns.store'), [
                 'name' => 'Authorisation '.uniqid(),

@@ -45,4 +45,25 @@ return [
     'coep' => env('CROSS_ORIGIN_EMBEDDER_POLICY', ''),
 
     'permissions_policy' => env('PERMISSIONS_POLICY', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trusted Proxies
+    |--------------------------------------------------------------------------
+    |
+    | Addresses whose X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host and
+    | X-Forwarded-Port headers are believed; from anything else connecting directly they
+    | are ignored, so a client cannot choose the address the per-IP limits count. A trusted
+    | proxy may append to X-Forwarded-For, and must set or replace X-Forwarded-Proto and
+    | set or strip X-Forwarded-Host and X-Forwarded-Port.
+    |
+    | Empty trusts loopback and private ranges only, which means any client that can reach
+    | the app from one of those addresses. '*' on its own trusts the connecting address,
+    | whatever it is, and is only safe when no client can reach the app except through that
+    | one proxy. Otherwise a comma separated list of IPs or CIDR ranges with a prefix of 1
+    | or more. Entries that are not valid are ignored, and a value with no valid entry
+    | trusts nothing. Read by App\Http\Middleware\TrustProxies.
+    |
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
 ];

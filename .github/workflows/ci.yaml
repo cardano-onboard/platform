@@ -24,6 +24,12 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch: {}
 
+# Read access to repository contents is all either job needs: checkout, the caches, the
+# artifact upload and a local git diff use no other scope, and the Docker build's gha
+# cache authenticates with the runner's own token rather than GITHUB_TOKEN.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -45,7 +51,7 @@ jobs:
     # idles during the PHP suite and is there for the Dusk steps at the end.
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: onboard_test
@@ -90,7 +96,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.3
+          php-version: 8.4
           extensions: sqlite3, pdo_mysql, bcmath, gd
           tools: composer:v2
           coverage: pcov

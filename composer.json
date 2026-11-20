@@ -1,6 +1,6 @@
 {
     "name": "cardano-onboard/onboard-ninja",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "type": "project",
     "description": "Cardano token airdrop and claim platform.",
     "keywords": [
@@ -10,7 +10,7 @@
     ],
     "license": "Apache-2.0",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "ext-bcmath": "*",
         "ext-gd": "*",
         "ext-sodium": "*",

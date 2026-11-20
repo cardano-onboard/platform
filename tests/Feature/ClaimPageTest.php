@@ -79,6 +79,9 @@ class ClaimPageTest extends TestCase
             ->assertForbidden();
         $this->assertFalse((bool) $campaign->fresh()->desktop_claims_enabled);
 
+        // A different account from the one above, so start from an empty session.
+        $this->flushSession();
+
         $this->actingAs($owner)
             ->put(route('campaigns.update', $campaign), $payload(true))
             ->assertSessionHasNoErrors();

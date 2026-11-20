@@ -38,6 +38,19 @@ composer require symfony/http-client
 The symptom is a mail driver that appears configured correctly but throws as soon as
 anything tries to send.
 
+### Sign-in says too many attempts
+
+Two limits apply to failed logins. Five failures for one email address from one IP
+address lock that pair out for a short time. Separately, one IP address may fail
+`LOGIN_RATE_FAILED_PER_IP_PER_HOUR` sign-ins (30 by default) in an hour across all
+addresses; past that, the login form shows how long to wait, and other clients get a 429.
+Successful sign-ins do not count. The address counted is the one the app sees: set
+`TRUSTED_PROXIES` to match how the app is reached, as described in
+[Reverse proxies and client addresses](./configuration#reverse-proxies-and-client-addresses).
+Without a setting that matches a proxy in front, everyone behind it shares the proxy's
+address and a few mistyped passwords across many users can reach the limit, and an app
+exposed directly with a permissive setting lets a client choose its own address.
+
 ### Assets don't load and the console shows Content-Security-Policy errors
 
 The policy allows your own origin. If your build is served from a separate asset domain,

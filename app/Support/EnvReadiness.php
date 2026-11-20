@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Cardano\NativeWalletFactory;
+use App\Http\Middleware\TrustProxies;
 use CardanoPhp\Bech32\Bech32;
 use Closure;
 use Illuminate\Http\Client\Response;
@@ -180,6 +181,31 @@ class EnvReadiness
 
     // ------------------------------------------------------------------ application
 
+    /**
+     * The hosted apps sit behind an ingress that overwrites X-Forwarded-For, so they set `*`.
+     * Left blank, the app trusts only private addresses, and if the ingress connects from
+     * anywhere else every client can read as the ingress. On any profile, a list entry that is
+     * not an IP address or CIDR range with a prefix of 1 or more is ignored, and a value with
+     * no valid entry trusts nothing.
+     */
+    private function trustedProxies(): void
+    {
+        $parsed = TrustProxies::parse((string) config('security.trusted_proxies'));
+        $count = count($parsed['rejected']);
+
+        if ($count > 0) {
+            $this->wrong(
+                'TRUSTED_PROXIES',
+                'TRUSTED_PROXIES holding only IP addresses and CIDR ranges with a prefix of 1 or more',
+                ($count === 1 ? '1 entry is' : "{$count} entries are").' not a valid IP address or CIDR range (a host name, * inside a list, REMOTE_ADDR and a /0 range are not accepted) and is ignored, so if none is valid no address is trusted. To trust a proxy that is the only thing able to reach the app, use * on its own.',
+            );
+        } elseif ($this->hosted() && ! $parsed['star'] && $parsed['proxies'] === []) {
+            $this->wrong('TRUSTED_PROXIES', "TRUSTED_PROXIES set to the ingress's address range, or * where nothing but the ingress can reach the app", 'It is blank, so only private addresses are trusted, and if the ingress connects from anywhere else every request can read as coming from it and all claims share one per-IP limit.');
+        } else {
+            $this->ok('TRUSTED_PROXIES', $parsed['star'] ? '*' : ($parsed['proxies'] === [] ? 'private ranges' : 'listed'));
+        }
+    }
+
     private function app(): void
     {
         $key = (string) config('app.key');
@@ -237,6 +263,8 @@ class EnvReadiness
         if ($this->profile === 'production' && config('session.secure') !== true) {
             $this->warn('SESSION_SECURE_COOKIE', 'SESSION_SECURE_COOKIE=true', 'The session cookie is not marked secure.');
         }
+
+        $this->trustedProxies();
 
         if ($this->profile === 'production' && config('logging.channels.single.level') === 'debug') {
             $this->warn('LOG_LEVEL', 'LOG_LEVEL=warning or error', 'Debug logging writes request detail to the log on every request.');

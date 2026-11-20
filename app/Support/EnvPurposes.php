@@ -139,6 +139,7 @@ final class EnvPurposes
         'MAIL_ENCRYPTION' => 'Encryption for the SMTP connection: tls or ssl.',
         'MAIL_USERNAME' => 'SMTP user name.',
         'MAIL_PASSWORD' => 'SMTP password.',
+        'TRUSTED_PROXIES' => 'Addresses (IPs or CIDR ranges), or *, whose X-Forwarded-For, -Proto, -Host and -Port headers are believed. Blank trusts loopback and private ranges only.',
         'PERMISSIONS_POLICY' => 'Value of the Permissions-Policy header sent with every page.',
         'CROSS_ORIGIN_OPENER_POLICY' => 'Value of the Cross-Origin-Opener-Policy header.',
         'CROSS_ORIGIN_RESOURCE_POLICY' => 'Value of the Cross-Origin-Resource-Policy header.',
