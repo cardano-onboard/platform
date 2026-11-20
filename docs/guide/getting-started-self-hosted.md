@@ -98,11 +98,20 @@ reward tokens by ticker.
 ## 5. Sign in
 
 Open `http://localhost:8080` and log in with the admin credentials from your `.env`.
+Failed sign-ins are limited per IP address; see
+[Sign-in says too many attempts](./troubleshooting#sign-in-says-too-many-attempts).
 You're live — continue to [Campaigns & funding](./campaigns).
 
 ## Production notes
 
 - Terminate TLS at a reverse proxy in front of the container.
+- Tell the app which proxy to believe with `TRUSTED_PROXIES`. The default trusts any client
+  that reaches the app from a loopback or private address, so with a proxy on the same host
+  set `APP_BIND=127.0.0.1` to keep the app's port off the network. Otherwise list the
+  proxy's address or range. Use `*` only where no client can reach the app except through
+  that one proxy. The proxy may append to `X-Forwarded-For`, and must set or replace
+  `X-Forwarded-Proto` and set or strip `X-Forwarded-Host` and `X-Forwarded-Port`. See
+  [Reverse proxies and client addresses](./configuration#reverse-proxies-and-client-addresses).
 - The container already runs the **queue worker** and **scheduler** under supervisord —
   these process claim delivery and the periodic claim-status checks. Keep the container
   running; don't disable them.
@@ -111,3 +120,26 @@ You're live — continue to [Campaigns & funding](./campaigns).
   [Scheduled maintenance](./configuration#scheduled-maintenance).
 - Review [Configuration](./configuration) for backend selection, rate limits, and the
   security headers in `config/security.php`.
+
+## Upgrading
+
+### Upgrading to 2.1.0
+
+Version 2.1.0 moves the bundled database from MySQL 8.0 to MySQL 8.4 and the application image from PHP 8.2 to PHP 8.4. MySQL 8.0 reached end of life on 30 April 2026, and PHP 8.2 stops receiving security fixes on 31 December 2026.
+
+MySQL 8.4 no longer enables the `mysql_native_password` login method. The accounts the stack creates for itself use the default method and keep working. If you added your own MySQL accounts that use `mysql_native_password`, switch them to `caching_sha2_password` before upgrading.
+
+On the first start after the upgrade, MySQL 8.4 upgrades the 8.0 data files in place. The upgrade cannot be reversed: once 8.4 has opened the data, 8.0 cannot read it again. Back up the database before you pull the new version. From the folder that holds your `docker-compose.yml` and `.env`, with the stack still running on the old version:
+
+```bash
+docker compose exec -T mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --events --all-databases' > onboard-backup.sql
+```
+
+Check that `onboard-backup.sql` is not empty and keep a copy away from the server. Then update and rebuild:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+A deployment that runs without Docker needs PHP 8.3 or later, and MySQL 8.4 or MariaDB 10.11 or later.

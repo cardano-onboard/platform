@@ -531,6 +531,16 @@ figure changes what later claims record and leaves earlier ones alone.
 | Code API max tokens per code  | `CODE_API_MAX_TOKENS_PER_CODE` | 20        |
 | Code API max token quantity   | `CODE_API_MAX_TOKEN_QUANTITY`  | 1000000   |
 
+### Failed sign-ins
+
+```dotenv
+LOGIN_RATE_FAILED_PER_IP_PER_HOUR=30
+```
+
+One IP address may fail this many sign-ins in an hour, whatever addresses it tries. It sits beside the lockout that already applies to one email address from one IP address after five failures: that stops a single account being guessed at, and this stops one source moving on to the next address. Only failed attempts count; a successful sign-in neither counts nor gives failures back. The default leaves room for an office or event network where many people share an address and a few mistype a password. A sign-in form past the limit shows how long to wait on its email field; any other client gets a 429 with a `Retry-After` header.
+
+The limit is per source only. There is no cap across the whole deployment, because that would let one source lock every operator out. An IPv6 address is counted by its /64, the block one network is normally given, so one machine on one network cannot start again with a new address at every failure. The five-failure lockout for one email address counts the exact client address, so a neighbour in the same IPv6 network cannot keep an address locked; the network as a whole is held to the limit above. The address counted is the one the app sees: set `TRUSTED_PROXIES` to match how the app is reached, as described in [Reverse proxies and client addresses](#reverse-proxies-and-client-addresses). Without a setting that matches a proxy in front, everyone behind it shares the proxy's address, and an app exposed directly with a permissive setting lets a client choose its own.
+
 ## Reward minimums
 
 Every Cardano output has to hold a minimum amount of ADA that rises with the number of
@@ -576,6 +586,24 @@ set by the `SecurityHeaders` middleware and configured in `config/security.php`.
 value is env-overridable — for example, tighten the `CONTENT_SECURITY_POLICY` for your
 deployment, or enable `CROSS_ORIGIN_EMBEDDER_POLICY` once you've verified your CDN assets
 send the required CORP headers.
+
+## Reverse proxies and client addresses
+
+Every per-IP rate limit counts the address Laravel believes the client has. When a reverse proxy sits in front of the app, that address arrives in the `X-Forwarded-For` header, along with the scheme, host and port in `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-Port`. The app believes those four headers only from addresses listed in `TRUSTED_PROXIES`. From anyone else they are ignored, so a client that connects directly cannot pick the address the limits count. `X-Forwarded-Prefix` is never believed.
+
+A trusted proxy may append to `X-Forwarded-For` (nginx's usual `$proxy_add_x_forwarded_for` is fine), because the app reads the client address from the right and stops at the first address that is not trusted. The proxy must set or replace `X-Forwarded-Proto` and set or strip `X-Forwarded-Host` and `X-Forwarded-Port`: the app reads those from the first value, so a proxy that only appends passes a client's own value through.
+
+```dotenv
+TRUSTED_PROXIES=
+```
+
+- Blank (the default) trusts loopback and private ranges only: `127.0.0.1`, `::1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` and `fc00::/7`, with the IPv4-mapped form of each. That is any client that can reach the app from one of those addresses, not only a proxy: another machine on the same private network, or a container beside the app, can send its own `X-Forwarded-For` and have it believed. With a proxy on the same host, bind the app's port to `127.0.0.1` (`APP_BIND=127.0.0.1` in `.env`, which `docker-compose.prod.yml` already reads). Otherwise, list the proxy explicitly.
+- A comma separated list of IP addresses or CIDR ranges, such as `203.0.113.10, 198.51.100.0/24`, trusts exactly those and nothing else. Use it when the proxy is elsewhere. An IPv4 entry also covers the IPv4-mapped form of the same address or range. A prefix must be from 1 up, without leading zeros: use `*` rather than a `/0` range. An entry that is not a valid IPv4 or IPv6 address or range (a host name, `*` inside a list, `REMOTE_ADDR`, a `/0` range) is ignored. If no entry in the value is valid, no address is trusted at all, so every client is read as the proxy. `php artisan poo:env-check --profile=self-hosted` reports ignored entries.
+- `*`, on its own, trusts the connecting address, whatever it is. Set it only where no client can reach the app except through that one proxy. With two proxies in a row, the limits count the first one's address, not the client's.
+
+Where every client arrives from the same private address, as with rootless Docker's port driver or some NAT setups, listing the proxy does not help, because the proxy and the clients share that address. Keep clients off the app's port with `APP_BIND=127.0.0.1` and run the proxy on the host. The same goes for an app port that is open to an office network or a private cloud network: close it to everything but the proxy.
+
+The app sends `Strict-Transport-Security` only on requests it sees as HTTPS. It learns that from `X-Forwarded-Proto` sent by a trusted proxy, or from its own TLS connection when it terminates TLS itself.
 
 ## Admin account
 

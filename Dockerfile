@@ -26,8 +26,11 @@ RUN composer install \
 # Copy the rest of the source so autoload paths resolve correctly
 COPY . .
 
-# Now run the post-install scripts with artisan available
-RUN composer dump-autoload --optimize
+# Write the optimised autoloader now that the source is here. --no-scripts again: the
+# post-autoload-dump script boots the application through artisan, and this image carries
+# the newest PHP release rather than the runtime's. Its PHP 8.6 build has no mbstring, so
+# the application cannot boot here. Package discovery runs in the runtime stage instead.
+RUN composer dump-autoload --optimize --no-scripts
 
 # =============================================================================
 # Stage 2 — Node / Vite build
@@ -54,7 +57,7 @@ RUN npm run build
 # =============================================================================
 # Stage 3 — PHP-FPM + nginx runtime
 # =============================================================================
-FROM php:8.2-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine AS runtime
 
 LABEL maintainer="Onboard.Ninja"
 LABEL description="Onboard.Ninja — DIY self-hosted image"
@@ -124,6 +127,10 @@ COPY --from=node --chown=www-data:www-data /app/public/build ./public/build
 # rather than in a container that starts and then fails on the first request that needs one.
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 RUN composer check-platform-reqs --no-dev --no-interaction
+
+# Package discovery, which the composer stage skips. It boots the application, so it runs
+# here, on the PHP version and extensions the container serves requests with.
+RUN php artisan package:discover
 
 # ---------------------------------------------------------------------------
 # Directory permissions

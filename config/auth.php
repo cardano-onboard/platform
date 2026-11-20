@@ -112,4 +112,34 @@ return [
 
     'password_timeout' => 10800,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Failed Login Limit
+    |--------------------------------------------------------------------------
+    |
+    | How many failed sign-in attempts one IP address may make in an hour,
+    | whatever addresses it tries. The per address lockout in the login
+    | request stops one account being guessed at; this stops one source
+    | cycling through addresses to get around it. Successful sign-ins do not
+    | count and do not reduce the count. The default leaves room for an office
+    | or an event network where many people share an address and a few mistype
+    | their password.
+    |
+    | An IPv6 source is counted by its /64, the block one network is normally
+    | given, so that one machine on one network cannot start again with a new
+    | address.
+    |
+    | The address counted is the one the app sees. Set TRUSTED_PROXIES to
+    | match how the app is reached, as described under Reverse proxies and
+    | client addresses in docs/guide/configuration.md: without a setting that
+    | matches a proxy in front, everyone behind it shares the proxy's address,
+    | and an app exposed directly with a permissive setting lets a client
+    | choose its own.
+    |
+    */
+
+    'login_limits' => [
+        'failed_per_ip_per_hour' => (int) env('LOGIN_RATE_FAILED_PER_IP_PER_HOUR', 30),
+    ],
+
 ];

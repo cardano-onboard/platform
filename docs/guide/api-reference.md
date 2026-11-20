@@ -84,6 +84,11 @@ Authenticate with a bearer token, the same as the proxy API:
 Authorization: Bearer {id}|{token}
 ```
 
+On the hosted edition, a token stops working when the password of the account that owns it
+changes, through the Profile page or a password reset. Requests with it then return `401`.
+Mint a new token and give it to the application, and plan for that when you rotate the
+password of an account an application depends on.
+
 Each endpoint requires its own ability, so a token minted for one can never reach the
 other:
 
@@ -177,6 +182,8 @@ polling status cannot use up a token's ability to create the next code
 The proxy API lets a **self-hosted instance relay transactions through the hosted
 backend** — set `TRANSACTION_BACKEND=proxy` and provide a `PROXY_API_TOKEN`. Create the
 token on your SaaS **Profile → API Tokens** page (it's shown once — copy it immediately).
+The form is available once the account's email address is confirmed; the server refuses
+token creation to an unconfirmed account.
 
 Authenticate with a bearer token:
 

@@ -40,6 +40,27 @@ abstract class DuskTestCase extends BaseTestCase
         parent::setUp();
 
         $this->discardBrowsersThatNoLongerReceiveInput();
+        $this->signBrowsersOut();
+    }
+
+    /**
+     * Start every test with no cookies for the app.
+     *
+     * Browsers are reused from one test to the next, and DatabaseTruncation on MySQL resets
+     * the users table's auto-increment, so a test's new user can get the id the previous
+     * test's session points at, with a different password hash. The session check on every
+     * web route then signs that session out on the Dusk login route itself, before loginAs
+     * has signed anyone in, and the test lands on the login page. Clearing the cookies gives
+     * every test the fresh browser it assumes. Cookies can only be cleared from a page on the
+     * app's host, so a static file is opened first; it is served without the framework and
+     * starts no session.
+     */
+    private function signBrowsersOut(): void
+    {
+        foreach (static::$browsers as $browser) {
+            $browser->visit('/robots.txt');
+            $browser->driver->manage()->deleteAllCookies();
+        }
     }
 
     /**

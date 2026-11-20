@@ -99,9 +99,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Generate links with the scheme APP_URL declares. trustProxies already honours
-        // X-Forwarded-Proto, but a TLS-terminating proxy is not obliged to send it, and
-        // several do not. Without this the request reads as plain HTTP behind such a
+        // Generate links with the scheme APP_URL declares. A trusted proxy's
+        // X-Forwarded-Proto is honoured, but a TLS-terminating proxy is not obliged to send
+        // it, and several do not. Without this the request reads as plain HTTP behind such a
         // proxy, so Ziggy publishes http:// route URLs into a page the browser loaded
         // over https. Every route() call then targets a foreign origin, which CSP
         // connect-src 'self' blocks and the browser also treats as mixed content.

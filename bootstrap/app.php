@@ -22,7 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->trustProxies(at: '*');
+        // Which proxies may supply the client address is read from config on each request.
+        $middleware->replace(\Illuminate\Http\Middleware\TrustProxies::class, \App\Http\Middleware\TrustProxies::class);
 
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
@@ -38,7 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // Every web route checks the session against the account's current password, so a
+        // password change ends the other sessions wherever they are used. The alias points
+        // at the application's subclass, which also refuses a session with no stored hash.
+        $middleware->authenticateSessions();
+
         $middleware->alias([
+            'auth.session' => \App\Http\Middleware\AuthenticateSession::class,
             'proxy.quota' => \App\Http\Middleware\CheckProxyQuota::class,
             'proxy.log' => \App\Http\Middleware\LogProxyUsage::class,
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,

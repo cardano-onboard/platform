@@ -55,9 +55,9 @@ It implements [CIP-99](https://github.com/cardano-foundation/CIPs/tree/master/CI
 
 ### Option B: Manual
 
-- PHP 8.2+ with extensions: `pdo_mysql`, `mbstring`, `xml`, `curl`, `zip`, `bcmath`
+- PHP 8.3+ with extensions: `pdo_mysql`, `mbstring`, `xml`, `curl`, `zip`, `bcmath`
 - Composer 2
-- MySQL 8 (or MariaDB 10.6+)
+- MySQL 8.4 (or MariaDB 10.11+)
 - Node.js 18+ with npm
 
 ---
@@ -424,13 +424,13 @@ To use a custom implementation, add a new case to the match expression in `app/P
 
 | Layer | Technology |
 |---|---|
-| Backend framework | Laravel 12 (PHP 8.2+) |
+| Backend framework | Laravel 12 (PHP 8.3+) |
 | Frontend framework | Vue 3 (Composition API, `<script setup>`) |
 | UI components | Vuetify 3 |
 | Server-client glue | Inertia.js |
 | Build tool | Vite |
 | Routing (frontend) | Ziggy |
-| Database | MySQL 8 / MariaDB 10.6+ |
+| Database | MySQL 8.4 / MariaDB 10.11+ |
 | Authentication | Laravel Breeze (session-based) |
 
 ---

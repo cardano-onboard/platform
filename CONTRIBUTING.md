@@ -6,10 +6,10 @@ Thank you for your interest in contributing to Onboard.Ninja! This guide will he
 
 ### Prerequisites
 
-- PHP 8.2+
+- PHP 8.3+
 - Composer 2
 - Node.js 22 LTS
-- MySQL 8 or MariaDB 10.6+
+- MySQL 8.4 or MariaDB 10.11+
 - Redis 7+
 - Docker (for running the full stack or E2E tests)
 
@@ -130,11 +130,11 @@ Draft pull requests are skipped, so run the suites locally while a branch is in 
 
 ### Stack
 
-- **Backend:** Laravel 12 (PHP 8.2+)
+- **Backend:** Laravel 12 (PHP 8.3+)
 - **Frontend:** Vue 3 + Vuetify 3 + Tailwind CSS
 - **Glue:** Inertia.js (server-driven SPA)
 - **Build:** Vite
-- **Database:** MySQL 8
+- **Database:** MySQL 8.4
 - **Auth:** Laravel Breeze (session-based, single admin for self-hosted)
 
 ### Transaction Backend
